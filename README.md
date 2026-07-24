@@ -6,6 +6,17 @@ Consolidates and supersedes three earlier apps — **pdf2img-gui**, **SimpleOCR*
 
 ## Tools
 
+### 0. Detect — unified entry
+Drop or paste **anything** (Ctrl+V works from any tab). The file is identified by its **magic bytes** — not its extension — and every tool that can handle it is offered as a one-click outcome:
+
+| Detected | Outcomes |
+|---|---|
+| PDF | convert pages to images · OCR via page render |
+| PNG / JPEG / WebP / GIF / BMP / AVIF / SVG / **HEIC** | convert format & resize · OCR · signature cleanup |
+| MP3 / FLAC / OGG / WAV / M4A | convert to WAV · ffmpeg command |
+| MP4 / MOV / MKV / WebM | ffmpeg command · extract audio → WAV |
+| anything else | first-bytes hex dump + a pointer to [metadata.carino.systems](https://metadata.carino.systems) |
+
 ### 1. PDF → Images
 Render PDF pages to PNG, JPEG or WebP with [pdf.js](https://mozilla.github.io/pdf.js/) (vendored, v6).
 - DPI presets (72 / 150 / 300) or any custom value from 36–600
@@ -19,18 +30,19 @@ Extract text from images with [Tesseract.js](https://tesseract.projectnaptha.com
 - Confidence badge, copy to clipboard, `.txt` download
 
 ### 3. Signature Cleanup
-Turn a photo/scan of a signature into a clean transparent PNG — the OpenCV pipeline of the old SignatureEditor reimplemented in ~200 lines of pure canvas/JS (no 9 MB WASM download):
+Turn a photo/scan of a signature into a clean transparent PNG — pure canvas/JS, no OpenCV, and the whole UI **fits on one screen** (preview + thumbnail strip + one compact control column, no scrolling):
 1. Grayscale (Rec.601 luma)
-2. **Otsu automatic threshold** with manual slider override, invert mode for light-ink-on-dark
-3. Background → transparent alpha, with optional soft (feathered) edges
-4. **Despeckle** — connected-component analysis drops ink blobs under N px
-5. Auto-crop to ink bounds with adjustable padding
-6. Ink recolor: black / blue / custom color
-7. Manual eraser brush with undo, pipeline-step debug strip, per-step export
-8. Export transparent PNG at 1× / 2× / 4× (nearest-neighbour, crisp edges)
+2. **Auto polarity** — the border ring decides whether ink is dark-on-light or light-on-dark (manual override available)
+3. **Lighting flattening** — a coarse background estimate (area-average downscale → 3×3 max filter → box blur → bilinear upsample) divides out shadows and uneven paper, so a phone photo with a shadow across it no longer thresholds into a black slab
+4. **Otsu automatic threshold** on the flattened image, with a 35 % ink-coverage cap as a safety net, plus a manual slider override
+5. Background → transparent alpha, with optional soft (feathered) edges
+6. **Despeckle** — connected-component analysis drops ink blobs under N px
+7. Auto-crop to ink bounds with adjustable padding; ink recolor (black / blue / custom)
+8. Manual eraser brush with undo; export transparent PNG at 1× / 2× / 4× (nearest-neighbour), single file or all-as-ZIP
 
 ### 4. Image Converter
-Batch-convert images between PNG / JPEG / WebP via canvas re-encode.
+Batch-convert images to PNG / JPEG / WebP via canvas re-encode.
+- **HEIC/HEIF input** is decoded locally with a vendored [libheif](https://github.com/strukturag/libheif) WASM bundle (`vendor/libheif/`, loaded lazily on first HEIC) — iPhone photos convert without any upload
 - Quality slider for lossy formats, optional max-dimension downscale (aspect preserved, never upscales)
 - Per-file download or one ZIP for the whole batch
 
@@ -47,6 +59,8 @@ Browsers can't transcode video offline without a ~30 MB WASM blob, so this is th
 - `vendor/pdfjs/` — pdf.js build (`pdf.min.mjs` + worker), dynamically imported on first use.
 - `vendor/tesseract/` — tesseract.js `tesseract.min.js` + `worker.min.js` and all `tesseract-core-*.wasm.js` variants (plain / SIMD / relaxed-SIMD, each with an LSTM-only build); the worker picks the best one for the CPU at runtime.
 - `vendor/tessdata/` — `eng` / `spa` / `por` traineddata, kept gzipped.
+- `vendor/libheif/` — libheif WASM single-file bundle (wasm inlined as base64), injected only when a HEIC file is actually opened; HEIC is normalized to PNG at the door so OCR, Signature and the converter all accept it.
+- The page is a **fixed-viewport layout**: the body never scrolls — long content scrolls inside its own panel.
 - Fonts are self-hosted (`fonts/carino-fonts.css`); the shared fleet navbar is `carino-navbar.js` + `carino-clock.js`.
 - Internals are exposed on `window.MediaTools` for testing.
 
@@ -54,7 +68,7 @@ Browsers can't transcode video offline without a ~30 MB WASM blob, so this is th
 
 This project is licensed under the **GNU Affero General Public License v3.0** — see [LICENSE](LICENSE).
 
-Vendored components keep their own licenses: pdf.js (Apache-2.0, `vendor/pdfjs/LICENSE`), tesseract.js (Apache-2.0, `vendor/tesseract/LICENSE.md`), tesseract.js-core (Apache-2.0, `vendor/tesseract/LICENSE-core`), tessdata language models (Apache-2.0).
+Vendored components keep their own licenses: pdf.js (Apache-2.0, `vendor/pdfjs/LICENSE`), tesseract.js (Apache-2.0, `vendor/tesseract/LICENSE.md`), tesseract.js-core (Apache-2.0, `vendor/tesseract/LICENSE-core`), tessdata language models (Apache-2.0), libheif (LGPL-3.0, `vendor/libheif/LICENSE`).
 
 ---
 Part of the [Carino Systems](https://carino.systems) fleet.

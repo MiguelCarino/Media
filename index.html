@@ -41,10 +41,11 @@
     ::selection { background: var(--accent); color: #050505; }
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 
+    html, body { height: 100%; }
     body {
       margin: 0; background: var(--bg); color: var(--text);
       font-family: var(--sans); font-size: 15px; line-height: 1.55;
-      min-height: 100vh; display: flex; flex-direction: column;
+      display: flex; flex-direction: column; overflow: hidden;
       -webkit-font-smoothing: antialiased;
     }
     a { color: var(--accent); }
@@ -70,13 +71,13 @@
     .tool-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
     /* ─── Tool sections ───────────────────────────────────────── */
-    main { flex: 1; width: 100%; max-width: 1440px; margin: 0 auto; padding: 20px; }
+    main { flex: 1; min-height: 0; width: 100%; max-width: 1440px; margin: 0 auto; padding: 14px 20px; }
     .tool { display: none; }
-    .tool.active { display: block; }
+    .tool.active { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow-y: auto; }
 
-    .tool-head { margin-bottom: 18px; }
+    .tool-head { margin-bottom: 12px; flex-shrink: 0; }
     .tool-head h1 {
-      font-family: var(--display); font-weight: 900; font-size: 1.6rem;
+      font-family: var(--display); font-weight: 900; font-size: 1.3rem;
       text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px;
       background: var(--gold-text); -webkit-background-clip: text;
       background-clip: text; -webkit-text-fill-color: transparent;
@@ -233,7 +234,7 @@
 
     /* ─── OCR specifics ───────────────────────────────────────── */
     .preview-box {
-      height: clamp(200px, 34vh, 380px); display: flex; align-items: center; justify-content: center;
+      height: clamp(140px, 26vh, 320px); display: flex; align-items: center; justify-content: center;
       padding: 10px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px;
     }
     #ocr-preview { max-width: 100%; max-height: 100%; object-fit: contain; display: none; border-radius: 6px; background: #000; }
@@ -241,7 +242,7 @@
     #ocr-output {
       flex: 1; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-elev);
       padding: 13px; font-family: var(--mono); font-size: 13.5px; line-height: 1.6;
-      white-space: pre-wrap; overflow: auto; min-height: clamp(240px, 44vh, 520px);
+      white-space: pre-wrap; overflow: auto; min-height: clamp(160px, 30vh, 520px);
       overflow-wrap: anywhere;
     }
     .overlay {
@@ -254,61 +255,81 @@
     }
     .relative { position: relative; }
 
-    /* ─── Signature specifics ─────────────────────────────────── */
-    .sig-gallery { display: flex; flex-direction: column; gap: 14px; }
-    .sig-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-    .sig-titlebar {
-      padding: 10px 14px; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    }
-    .sig-titlebar .fname {
-      font-family: var(--mono); font-size: 0.68rem; font-weight: 700; color: var(--text-sec);
-      letter-spacing: 0.05em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis;
-      white-space: nowrap; flex: 1; min-width: 120px;
-    }
-    .sig-titlebar .stat-row { display: flex; flex-wrap: wrap; gap: 5px; }
-    .sig-body { display: grid; grid-template-columns: 1fr 300px; }
-    @media (max-width: 940px) { .sig-body { grid-template-columns: 1fr; } }
-    .sig-preview { padding: 12px; border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 320px; }
-    @media (max-width: 940px) { .sig-preview { border-right: none; border-bottom: 1px solid var(--border); } }
+    /* ─── Signature specifics (single-screen layout) ──────────── */
+    .sig-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 280px; gap: 12px; }
+    @media (max-width: 940px) { .sig-layout { grid-template-columns: 1fr; grid-template-rows: minmax(280px, 52vh) auto; } }
+    .sig-left { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
     .canvas-wrapper {
-      flex: 1; min-height: 300px; position: relative;
+      flex: 1; min-height: 0; position: relative;
       background-color: #fff;
       background-image: linear-gradient(45deg,#dce3ed 25%,transparent 25%), linear-gradient(-45deg,#dce3ed 25%,transparent 25%), linear-gradient(45deg,transparent 75%,#dce3ed 75%), linear-gradient(-45deg,transparent 75%,#dce3ed 75%);
       background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-      border-radius: 8px; overflow: hidden;
+      border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
       display: flex; align-items: center; justify-content: center;
     }
-    .sig-canvas { max-width: 100%; max-height: 460px; object-fit: contain; display: block; position: relative; z-index: 1; }
+    .canvas-wrapper.dragover { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-glow); }
+    .sig-canvas { max-width: 100%; max-height: 100%; object-fit: contain; display: block; position: relative; z-index: 1; }
+    .sig-empty { text-align: center; cursor: pointer; padding: 20px; }
+    .sig-empty .d-ico { font-size: 1.6rem; }
+    .sig-empty .d-title { font-weight: 700; font-size: 0.92rem; color: #1f2937; }
+    .sig-empty .d-sub { font-size: 0.72rem; color: #6b7280; margin-top: 3px; }
     .eraser-cursor {
       position: absolute; z-index: 2; pointer-events: none;
       border: 1.5px solid rgba(0,0,0,0.75); border-radius: 50%;
       box-shadow: 0 0 0 1px rgba(255,255,255,0.6); transform: translate(-50%, -50%); display: none;
     }
-    .sig-controls { padding: 12px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; max-height: 560px; }
-    .sig-cg { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 11px; display: flex; flex-direction: column; gap: 9px; }
-    .pipeline-wrap { border-top: 1px solid var(--border); }
-    .pipeline-wrap summary, details.dbg summary {
-      font-family: var(--mono); font-size: 0.62rem; font-weight: 700; color: var(--text-muted);
-      letter-spacing: 0.08em; text-transform: uppercase; list-style: none; cursor: pointer;
-      user-select: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+    .sig-strip { flex-shrink: 0; display: flex; gap: 8px; align-items: center; overflow-x: auto; overflow-y: visible; min-height: 56px; padding-top: 6px; }
+    .sig-thumb { position: relative; width: 46px; height: 46px; border-radius: 6px; border: 1px solid var(--border); background: #fff; cursor: pointer; padding: 0; flex-shrink: 0; }
+    .sig-thumb.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+    .sig-thumb canvas { width: 100%; height: 100%; object-fit: contain; border-radius: 6px; display: block; }
+    .sig-thumb .tx {
+      position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%;
+      background: var(--err); color: #fff; font-size: 10px; line-height: 16px; text-align: center; display: none;
     }
-    details.dbg summary { padding: 2px 0; }
-    .pipeline-wrap summary::before, details.dbg summary::before { content: '▶'; font-size: 0.5rem; transition: transform 0.15s; }
-    .pipeline-wrap details[open] summary::before, details.dbg[open] summary::before { transform: rotate(90deg); }
-    .pipeline { display: flex; gap: 10px; overflow-x: auto; padding: 0 14px 12px; }
-    .pipe-step { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .pipe-step .pipe-lbl { font-family: var(--mono); font-size: 0.56rem; color: var(--text-muted); white-space: nowrap; }
-    .pipe-step canvas { border-radius: 6px; border: 1px solid var(--border); display: block; background: #fff; }
-    .pipe-dl { font-size: 0.58rem; padding: 2px 7px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); border-radius: 5px; cursor: pointer; font-family: var(--mono); font-weight: 600; }
-    .pipe-dl:hover { border-color: var(--accent); color: var(--accent); }
-    .log-panel {
-      background: #080808; border: 1px solid var(--border); border-radius: 8px;
-      padding: 9px 11px; font-family: var(--mono); font-size: 0.63rem; max-height: 160px;
-      overflow-y: auto; white-space: pre-wrap; word-break: break-all; line-height: 1.6; margin-top: 6px;
+    .sig-thumb:hover .tx { display: block; }
+    .sig-add {
+      width: 46px; height: 46px; border-radius: 6px; border: 1px dashed var(--border);
+      background: transparent; color: var(--text-sec); font-size: 1.2rem; cursor: pointer; flex-shrink: 0;
     }
-    .log-ok { color: var(--ok); } .log-warn { color: var(--warn); }
-    .log-err { color: var(--err); } .log-info { color: #7dd3fc; }
+    .sig-add:hover { border-color: var(--accent); color: var(--accent); }
+    .sig-controls { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    .sig-controls .seg label { padding: 4px 6px; font-size: 0.72rem; }
+    .sig-controls .cg { gap: 4px; }
+    .sig-cg { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+    .sig-stat {
+      font-family: var(--mono); font-size: 0.62rem; color: var(--text-muted); line-height: 1.5; flex-shrink: 0; min-height: 1em;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .sig-stat b { color: var(--accent); font-weight: 600; }
+
+    @media (max-height: 800px) {
+      .sig-cg { padding: 4px 8px; gap: 3px; }
+      .sig-controls { gap: 4px; }
+      .sig-stat { -webkit-line-clamp: 1; }
+      .sig-strip { min-height: 46px; padding-top: 4px; }
+      .sig-thumb, .sig-add { width: 38px; height: 38px; }
+      .sig-controls input[type="range"] { margin: 0; }
+      .sig-controls .tgl-lbl { font-size: 0.76rem; }
+    }
+
+    /* ─── Detect tab ──────────────────────────────────────────── */
+    .auto-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 14px; width: 100%; max-width: 860px; margin: 0 auto; overflow-y: auto; }
+    .auto-drop { padding: 38px 20px; flex-shrink: 0; }
+    .auto-outcomes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+    .oc-card {
+      text-align: left; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 13px 14px; cursor: pointer; transition: 0.15s;
+      font-family: inherit; color: var(--text);
+    }
+    .oc-card:hover { border-color: var(--accent); background: var(--accent-faint); }
+    .oc-card .oc-t { font-weight: 800; font-size: 0.88rem; display: flex; gap: 8px; align-items: center; }
+    .oc-card .oc-d { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; line-height: 1.45; }
+    .auto-hex { font-family: var(--mono); font-size: 0.7rem; color: var(--text-sec); background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+
+    /* ─── fit-on-screen: columns scroll internally, page never ── */
+    .split, .split-even { align-items: stretch; flex: 1 1 auto; min-height: 0; }
+    .split > *, .split-even > * { min-height: 0; overflow-y: auto; }
+    @media (max-width: 940px) { .split > *, .split-even > * { overflow-y: visible; } }
 
     /* ─── Transcode specifics ─────────────────────────────────── */
     .cmd-block {
@@ -322,7 +343,8 @@
     .explain-line code { color: var(--accent); flex-shrink: 0; font-size: 0.72rem; }
 
     footer {
-      border-top: 1px solid var(--border); padding: 18px 24px; text-align: center;
+      flex-shrink: 0;
+      border-top: 1px solid var(--border); padding: 9px 24px; text-align: center;
       font-family: var(--mono); font-size: 0.66rem; color: var(--text-muted);
     }
     footer a { color: var(--text-sec); text-decoration: none; }
@@ -333,7 +355,11 @@
 
 <!-- ─── Tool tab strip ───────────────────────────────────────── -->
 <nav class="tool-tabs" id="toolTabs" aria-label="Tools">
-  <button class="tool-tab active" data-tool="pdf">
+  <button class="tool-tab active" data-tool="auto">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    Detect
+  </button>
+  <button class="tool-tab" data-tool="pdf">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
     PDF → Images
   </button>
@@ -357,8 +383,35 @@
 
 <main>
 
+  <!-- ═══ 0 · DETECT (unified entry) ════════════════════════════ -->
+  <section class="tool active" id="tool-auto">
+    <div class="tool-head">
+      <h1>Detect</h1>
+      <p>Drop or paste anything — the file is identified by its magic bytes and every tool that can handle it lights up. Paste (Ctrl+V) works from any tab.</p>
+    </div>
+    <div class="auto-stage">
+      <div class="drop auto-drop" id="auto-drop" tabindex="0" role="button" aria-label="Drop or paste any file">
+        <div class="d-ico">✨</div>
+        <div class="d-title">Drop any file here — or paste with Ctrl+V</div>
+        <div class="d-sub">PDF · PNG · JPEG · WebP · HEIC · GIF · SVG · MP3 · FLAC · OGG · WAV · MP4 · MKV …</div>
+      </div>
+      <input type="file" id="auto-input" multiple hidden>
+      <div id="auto-result" class="hidden" style="display:flex;flex-direction:column;gap:12px">
+        <div class="file-chip">
+          <div class="f-ico" id="auto-ico">?</div>
+          <div class="f-info">
+            <div class="f-name" id="auto-name"></div>
+            <div class="f-meta" id="auto-meta"></div>
+          </div>
+          <button class="f-x" id="auto-clear" title="Clear">✕</button>
+        </div>
+        <div class="auto-outcomes" id="auto-outcomes"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ═══ 1 · PDF → IMAGES ══════════════════════════════════════ -->
-  <section class="tool active" id="tool-pdf">
+  <section class="tool" id="tool-pdf">
     <div class="tool-head">
       <h1>PDF → Images</h1>
       <p>Render PDF pages to PNG, JPEG or WebP entirely in your browser — nothing is uploaded. Pick a DPI, a page range, and download pages one by one or as a ZIP.</p>
@@ -452,9 +505,9 @@
           <div class="drop" id="ocr-drop" tabindex="0" role="button" aria-label="Drop image or click to upload">
             <div class="d-ico">🖼️</div>
             <div class="d-title">Drop image here or click to upload</div>
-            <div class="d-sub">JPG, PNG, WebP · you can also paste (Ctrl+V)</div>
+            <div class="d-sub">JPG, PNG, WebP, HEIC · you can also paste (Ctrl+V)</div>
           </div>
-          <input id="ocr-picker" type="file" accept="image/*" hidden>
+          <input id="ocr-picker" type="file" accept="image/*,.heic,.heif" hidden>
 
           <div class="cg">
             <span class="cg-label">Language</span>
@@ -512,26 +565,97 @@
 
   <!-- ═══ 3 · SIGNATURE ═════════════════════════════════════════ -->
   <section class="tool" id="tool-signature">
-    <div class="tool-head">
-      <h1>Signature Cleanup</h1>
-      <p>Turn a photo or scan of a signature into a clean transparent PNG: automatic Otsu thresholding, speckle removal, tight crop, ink recolor and a manual eraser — pure canvas, no 9&nbsp;MB computer-vision library.</p>
-    </div>
+    <div class="sig-layout">
+      <div class="sig-left">
+        <div class="canvas-wrapper" id="sig-stage">
+          <div class="sig-empty" id="sig-emptyhint" tabindex="0" role="button" aria-label="Drop signature images or click to browse">
+            <div class="d-ico">✒️</div>
+            <div class="d-title">Drop signature photos here or click to browse</div>
+            <div class="d-sub">JPG, PNG, WebP, HEIC · multiple files supported · paste works too</div>
+          </div>
+        </div>
+        <div class="sig-strip" id="sig-strip">
+          <button class="sig-add" id="sig-add" title="Add images">+</button>
+        </div>
+      </div>
 
-    <div class="drop" id="sig-drop" tabindex="0" role="button" aria-label="Drop signature images">
-      <div class="d-ico">✒️</div>
-      <div class="d-title">Drop signature images here or click to upload</div>
-      <div class="d-sub">JPG, PNG, WebP · multiple files supported</div>
+      <div class="sig-controls">
+        <div class="sig-stat" id="sig-statline">No image loaded.</div>
+        <div class="sig-cg">
+          <div class="tgl-row">
+            <div class="tgl-lbl">Auto threshold (Otsu)</div>
+            <label class="pill"><input type="checkbox" id="sig-auto" checked><span class="tr"></span></label>
+          </div>
+          <div class="cg">
+            <span class="cg-label">Level <span class="val" id="sig-thrv">–</span></span>
+            <input type="range" min="0" max="255" value="160" id="sig-thr" disabled>
+          </div>
+          <div class="cg">
+            <span class="cg-label">Ink is…</span>
+            <div class="seg">
+              <input type="radio" name="sig-pol" id="sig-pol-auto" value="auto" checked><label for="sig-pol-auto">Auto</label>
+              <input type="radio" name="sig-pol" id="sig-pol-dark" value="dark"><label for="sig-pol-dark">Dark</label>
+              <input type="radio" name="sig-pol" id="sig-pol-light" value="light"><label for="sig-pol-light">Light</label>
+            </div>
+          </div>
+          <div class="tgl-row">
+            <div class="tgl-lbl" title="Removes shadows and uneven paper before thresholding">Flatten lighting</div>
+            <label class="pill"><input type="checkbox" id="sig-flat" checked><span class="tr"></span></label>
+          </div>
+          <div class="tgl-row">
+            <div class="tgl-lbl">Soft edges</div>
+            <label class="pill"><input type="checkbox" id="sig-soft" checked><span class="tr"></span></label>
+          </div>
+        </div>
+        <div class="sig-cg">
+          <div class="cg">
+            <span class="cg-label">Despeckle — min blob px <span class="val" id="sig-spkv">30</span></span>
+            <input type="range" min="1" max="300" value="30" id="sig-spk">
+          </div>
+          <div class="cg">
+            <span class="cg-label">Crop padding <span class="val" id="sig-padv">8</span></span>
+            <input type="range" min="0" max="60" value="8" id="sig-pad">
+          </div>
+        </div>
+        <div class="sig-cg">
+          <div style="display:flex;gap:6px;align-items:center">
+            <div class="seg" style="flex:1">
+              <input type="radio" name="sig-ink" id="sig-ink-black" value="#000000" checked><label for="sig-ink-black">Black</label>
+              <input type="radio" name="sig-ink" id="sig-ink-blue" value="#1e40af"><label for="sig-ink-blue">Blue</label>
+              <input type="radio" name="sig-ink" id="sig-ink-custom" value="custom"><label for="sig-ink-custom">Custom</label>
+            </div>
+            <input type="color" id="sig-inkc" value="#14532d" title="Custom ink color">
+          </div>
+          <div class="cg">
+            <span class="cg-label">Eraser — brush <span class="val" id="sig-esv">20</span>px</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="btn btn-sm" id="sig-etgl" style="white-space:nowrap">✎ Eraser</button>
+              <button class="btn btn-sm" id="sig-eundo" title="Undo erase">↩</button>
+              <input type="range" min="4" max="120" value="20" id="sig-esize" style="flex:1">
+            </div>
+          </div>
+        </div>
+        <div class="sig-cg">
+          <div style="display:flex;gap:6px;align-items:stretch">
+            <div class="seg" style="flex:0 0 auto">
+              <input type="radio" name="sig-scale" id="sig-s1" value="1" checked><label for="sig-s1">1×</label>
+              <input type="radio" name="sig-scale" id="sig-s2" value="2"><label for="sig-s2">2×</label>
+              <input type="radio" name="sig-scale" id="sig-s4" value="4"><label for="sig-s4">4×</label>
+            </div>
+            <button class="btn btn-gold" id="sig-dl" disabled style="flex:1;padding:5px 8px;font-size:0.76rem">↓ PNG</button>
+            <button class="btn btn-sm hidden" id="sig-dlall" style="white-space:nowrap">↓ ZIP</button>
+          </div>
+        </div>
+      </div>
     </div>
-    <input type="file" id="sig-input" accept="image/*" multiple hidden>
-
-    <div class="sig-gallery" id="sig-gallery" style="margin-top:14px"></div>
+    <input type="file" id="sig-input" accept="image/*,.heic,.heif" multiple hidden>
   </section>
 
   <!-- ═══ 4 · IMAGE CONVERT ═════════════════════════════════════ -->
   <section class="tool" id="tool-images">
     <div class="tool-head">
       <h1>Image Converter</h1>
-      <p>Batch-convert images between PNG, JPEG and WebP with quality control and optional downscaling. Download individually or as a single ZIP.</p>
+      <p>Batch-convert images to PNG, JPEG or WebP with quality control and optional downscaling — HEIC/HEIF input is decoded right here with a vendored libheif. Download individually or as a single ZIP.</p>
     </div>
     <div class="split">
       <div class="panel">
@@ -540,9 +664,9 @@
           <div id="img-drop" class="drop" tabindex="0" role="button" aria-label="Drop images or click to browse">
             <div class="d-ico">🖼️</div>
             <div class="d-title">Drop images here</div>
-            <div class="d-sub">or click to browse · multiple files supported</div>
+            <div class="d-sub">or click to browse · multiple files · HEIC decodes locally</div>
           </div>
-          <input type="file" id="img-input" accept="image/*" multiple hidden>
+          <input type="file" id="img-input" accept="image/*,.heic,.heif" multiple hidden>
 
           <div class="cg">
             <span class="cg-label">Output format</span>
@@ -711,16 +835,16 @@ const $ = (id) => document.getElementById(id);
 const fmtBytes = (n) => n < 1024 ? n + ' B' : n < 1048576 ? (n/1024).toFixed(1) + ' KB' : (n/1048576).toFixed(2) + ' MB';
 
 /* ─── tabs + hash routing ─── */
-const TOOLS = ['pdf','ocr','signature','images','transcode'];
+const TOOLS = ['auto','pdf','ocr','signature','images','transcode'];
 function showTool(name){
-  if(!TOOLS.includes(name)) name = 'pdf';
+  if(!TOOLS.includes(name)) name = 'auto';
   document.querySelectorAll('.tool-tab').forEach(b => b.classList.toggle('active', b.dataset.tool === name));
   TOOLS.forEach(t => $('tool-' + t).classList.toggle('active', t === name));
   if(location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
 }
 document.querySelectorAll('.tool-tab').forEach(b => b.addEventListener('click', () => showTool(b.dataset.tool)));
 window.addEventListener('hashchange', () => showTool(location.hash.slice(1)));
-showTool(location.hash.slice(1) || 'pdf');
+showTool(location.hash.slice(1) || 'auto');
 
 /* ─── download helper (replaces file-saver) ─── */
 function downloadBlob(blob, filename){
@@ -808,6 +932,85 @@ function wireDrop(dropEl, inputEl, onFiles, { multiple = false } = {}){
     e.target.value = '';
   });
 }
+
+/* ─── magic-byte file identification ─── */
+async function sniffFile(file){
+  const buf = new Uint8Array(await file.slice(0, 64).arrayBuffer());
+  const ascii = (o, s) => {
+    if(o + s.length > buf.length) return false;
+    for(let i = 0; i < s.length; i++) if(buf[o + i] !== s.charCodeAt(i)) return false;
+    return true;
+  };
+  const ftyp = ascii(4, 'ftyp') ? String.fromCharCode.apply(null, Array.from(buf.slice(8, 12))).trim().toLowerCase() : null;
+  if(ascii(0, '%PDF'))                       return { kind: 'pdf',   label: 'PDF document' };
+  if(buf[0] === 0x89 && ascii(1, 'PNG'))     return { kind: 'image', label: 'PNG image' };
+  if(buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return { kind: 'image', label: 'JPEG image' };
+  if(ascii(0, 'RIFF') && ascii(8, 'WEBP'))   return { kind: 'image', label: 'WebP image' };
+  if(ascii(0, 'GIF8'))                       return { kind: 'image', label: 'GIF image' };
+  if(ascii(0, 'BM'))                         return { kind: 'image', label: 'BMP image' };
+  if(ftyp && /^(heic|heix|heim|heis|hevc|hevm|hevs|mif1|msf1)/.test(ftyp)) return { kind: 'heic', label: 'HEIC/HEIF image' };
+  if(ftyp && ftyp.startsWith('avif'))        return { kind: 'image', label: 'AVIF image' };
+  if(ascii(0, 'ID3'))                        return { kind: 'audio', label: 'MP3 audio' };
+  if(buf[0] === 0xFF && (buf[1] & 0xE6) === 0xE2) return { kind: 'audio', label: 'MP3 audio' };
+  if(ascii(0, 'fLaC'))                       return { kind: 'audio', label: 'FLAC audio' };
+  if(ascii(0, 'OggS'))                       return { kind: 'audio', label: 'Ogg audio' };
+  if(ascii(0, 'RIFF') && ascii(8, 'WAVE'))   return { kind: 'audio', label: 'WAV audio' };
+  if(ftyp && (ftyp.startsWith('m4a') || ftyp.startsWith('m4b'))) return { kind: 'audio', label: 'M4A/AAC audio' };
+  if(ftyp)                                   return { kind: 'video', label: 'MP4/MOV video (' + ftyp + ')' };
+  if(buf[0] === 0x1A && buf[1] === 0x45 && buf[2] === 0xDF && buf[3] === 0xA3) return { kind: 'video', label: 'Matroska / WebM' };
+  const head = new TextDecoder().decode(buf).trimStart().toLowerCase();
+  if(head.startsWith('<?xml') || head.startsWith('<svg')) return { kind: 'image', label: 'SVG image' };
+  if(file.type.startsWith('image/'))         return { kind: 'image', label: file.type };
+  if(file.type.startsWith('audio/'))         return { kind: 'audio', label: file.type };
+  if(file.type.startsWith('video/'))         return { kind: 'video', label: file.type };
+  if(ascii(0, 'PK'))                         return { kind: 'unknown', label: 'ZIP archive' };
+  return { kind: 'unknown', label: file.type || 'unknown binary' };
+}
+
+/* ─── HEIC decoding (vendored libheif, loaded only when needed) ─── */
+const isHeicName = n => /\.(heic|heif)$/i.test(n || '');
+let heicModPromise = null;
+function heicModule(){
+  if(!heicModPromise){
+    heicModPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'vendor/libheif/libheif-bundle.js';
+      s.onload = () => resolve();
+      s.onerror = () => { heicModPromise = null; reject(new Error('Could not load the HEIC decoder.')); };
+      document.head.appendChild(s);
+    }).then(() => window.libheif());
+  }
+  return heicModPromise;
+}
+async function heicToCanvas(file){
+  const mod = await heicModule();
+  const decoder = new mod.HeifDecoder();
+  const images = decoder.decode(await file.arrayBuffer());
+  if(!images.length) throw new Error('No image found inside this HEIC file.');
+  const image = images[0];
+  const w = image.get_width(), h = image.get_height();
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const id = ctx.createImageData(w, h);
+  await new Promise((res, rej) => image.display(id, d => d ? res() : rej(new Error('HEIC decode failed.'))));
+  images.forEach(i => { try { i.free(); } catch(_){} });
+  ctx.putImageData(id, 0, 0);
+  return canvas;
+}
+/* Any tool that eats raster images calls this first: HEIC → PNG File, everything else untouched. */
+async function normalizeImageFile(file){
+  let heic = isHeicName(file.name) || /hei[cf]/.test(file.type || '');
+  if(!heic && (!file.type || file.type === 'application/octet-stream')){
+    heic = (await sniffFile(file)).kind === 'heic';
+  }
+  if(!heic) return file;
+  const canvas = await heicToCanvas(file);
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+  if(!blob) throw new Error('Could not re-encode HEIC as PNG.');
+  return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.png', { type: 'image/png' });
+}
+const isImageLike = f => (f.type && f.type.startsWith('image/')) || isHeicName(f.name);
 
 /* ════════════════════════════════════════════════════════════════
    1 · PDF → IMAGES  (vendored pdf.js, loaded on demand as a module)
@@ -974,7 +1177,7 @@ const PdfTool = (() => {
     btnZip.disabled = false;
   });
 
-  return { parseRange };
+  return { parseRange, open: handleFile };
 })();
 
 /* ════════════════════════════════════════════════════════════════
@@ -1031,6 +1234,13 @@ const OcrTool = (() => {
     $('ocr-invert').textContent = 'Invert for OCR ⚡';
     $('ocr-rotate').textContent = 'Rotate ⤾';
     setBusy(false);
+  }
+
+  async function open(file){
+    if(!file || !isImageLike(file)) return;
+    try { file = await normalizeImageFile(file); }
+    catch(err){ output.textContent = 'Error: ' + (err && err.message || err); setState('Error'); return; }
+    loadFile(file);
   }
 
   function loadFile(file){
@@ -1138,7 +1348,7 @@ const OcrTool = (() => {
     }
   }
 
-  wireDrop($('ocr-drop'), $('ocr-picker'), files => loadFile(files[0]));
+  wireDrop($('ocr-drop'), $('ocr-picker'), files => open(files[0]));
   $('ocr-invert-view').addEventListener('click', () => { if(currentFile) preview.classList.toggle('inverted'); });
   $('ocr-invert').addEventListener('click', () => {
     if(!currentFile) return;
@@ -1179,7 +1389,7 @@ const OcrTool = (() => {
   window.addEventListener('paste', e => {
     if(!$('tool-ocr').classList.contains('active')) return;
     const f = e.clipboardData && e.clipboardData.files && e.clipboardData.files[0];
-    if(f) loadFile(f);
+    if(f && isImageLike(f)) open(f);
   });
   window.addEventListener('beforeunload', () => {
     cleanupURL();
@@ -1187,7 +1397,7 @@ const OcrTool = (() => {
   });
 
   resetUI();
-  return { TESS_OPTS };
+  return { TESS_OPTS, open };
 })();
 </script>
 
@@ -1195,11 +1405,10 @@ const OcrTool = (() => {
 'use strict';
 /* ════════════════════════════════════════════════════════════════
    3 · SIGNATURE CLEANUP  (pure canvas pipeline — no OpenCV)
-   grayscale → Otsu threshold (manual override) → transparent bg →
-   despeckle (connected components) → auto-crop → recolor → PNG
+   grayscale → auto polarity → background flattening → Otsu with
+   ink-coverage cap → despeckle → auto-crop → recolor → PNG
    ════════════════════════════════════════════════════════════════ */
 const SigTool = (() => {
-  const gallery = $('sig-gallery');
 
   /* ---- core pipeline (also exposed for testing) ---- */
   function otsu(hist, total){
@@ -1246,99 +1455,146 @@ const SigTool = (() => {
     return { kept, dropped };
   }
 
+  /* coarse illumination map: area-average downscale, then a 3×3 max filter
+     (removes dark ink strokes from the estimate) and a 3×3 box blur */
+  function estimateBackground(gray, w, h){
+    const sw = Math.max(8, Math.min(48, w));
+    const sh = Math.max(8, Math.min(48, Math.max(1, Math.round(h * sw / w))));
+    const sum = new Float64Array(sw * sh), cnt = new Float64Array(sw * sh);
+    for(let y = 0; y < h; y++){
+      const sy = Math.min(sh - 1, (y * sh / h) | 0), row = y * w;
+      for(let x = 0; x < w; x++){
+        const si = sy * sw + Math.min(sw - 1, (x * sw / w) | 0);
+        sum[si] += gray[row + x]; cnt[si]++;
+      }
+    }
+    let a = new Float32Array(sw * sh);
+    for(let i = 0; i < a.length; i++) a[i] = cnt[i] ? sum[i] / cnt[i] : 255;
+    let b = new Float32Array(sw * sh);
+    for(let pass = 0; pass < 2; pass++){
+      for(let y = 0; y < sh; y++) for(let x = 0; x < sw; x++){
+        let m = 0;
+        for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++){
+          const nx = Math.min(sw - 1, Math.max(0, x + dx));
+          const ny = Math.min(sh - 1, Math.max(0, y + dy));
+          const v = a[ny * sw + nx];
+          if(v > m) m = v;
+        }
+        b[y * sw + x] = m;
+      }
+      const t = a; a = b; b = t;
+    }
+    for(let pass = 0; pass < 2; pass++){
+      for(let y = 0; y < sh; y++) for(let x = 0; x < sw; x++){
+        let s = 0, n = 0;
+        for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++){
+          const nx = x + dx, ny = y + dy;
+          if(nx >= 0 && nx < sw && ny >= 0 && ny < sh){ s += a[ny * sw + nx]; n++; }
+        }
+        b[y * sw + x] = s / n;
+      }
+      const t = a; a = b; b = t;
+    }
+    return { bg: a, sw, sh };
+  }
+
+  function bgAt(bg, sw, sh, x, y, w, h){
+    const fx = Math.min(sw - 1, Math.max(0, (x + 0.5) * sw / w - 0.5));
+    const fy = Math.min(sh - 1, Math.max(0, (y + 0.5) * sh / h - 0.5));
+    const x0 = fx | 0, y0 = fy | 0;
+    const x1 = Math.min(sw - 1, x0 + 1), y1 = Math.min(sh - 1, y0 + 1);
+    const tx = fx - x0, ty = fy - y0;
+    const top = bg[y0 * sw + x0] * (1 - tx) + bg[y0 * sw + x1] * tx;
+    const bot = bg[y1 * sw + x0] * (1 - tx) + bg[y1 * sw + x1] * tx;
+    return top * (1 - ty) + bot * ty;
+  }
+
   /**
    * @param {HTMLImageElement|HTMLCanvasElement} img
-   * @param {object} opts {autoThreshold, threshold, invert, minBlob, pad, softEdges, inkColor:[r,g,b]}
-   * @returns {canvas, stats, steps:[{label,canvas}]}
+   * @param {object} opts {autoThreshold, threshold, flatten, polarity:'auto'|'dark'|'light',
+   *                       minBlob, pad, softEdges, inkColor:[r,g,b]}
+   * @returns {canvas, stats, threshold}
    */
   function processSignature(img, opts){
     const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-    const steps = [], stats = {};
-    const snap = (label, canvas) => steps.push({ label, canvas });
-
+    const stats = {};
     const src = document.createElement('canvas');
     src.width = w; src.height = h;
     const sctx = src.getContext('2d', { willReadFrequently: true });
     sctx.drawImage(img, 0, 0);
-    snap('0 · source', src);
     stats.in = `${w}×${h}`;
+    const px = sctx.getImageData(0, 0, w, h).data;
 
-    const imgData = sctx.getImageData(0, 0, w, h);
-    const px = imgData.data;
+    const gray = new Uint8ClampedArray(w * h);
+    for(let i = 0, j = 0; i < px.length; i += 4, j++)
+      gray[j] = (px[i] * 0.299 + px[i+1] * 0.587 + px[i+2] * 0.114) | 0;
 
-    // 1 · grayscale (Rec.601 luma) + histogram
-    const gray = new Uint8Array(w * h);
+    // polarity — the paper must end up bright; judge from the border ring
+    let inverted = opts.polarity === 'light';
+    if(opts.polarity === 'auto'){
+      const ring = [];
+      const step = Math.max(1, ((w + h) / 256) | 0);
+      for(let x = 0; x < w; x += step) ring.push(gray[x], gray[(h - 1) * w + x]);
+      for(let y = 0; y < h; y += step) ring.push(gray[y * w], gray[y * w + w - 1]);
+      ring.sort((p, q) => p - q);
+      if(ring[(ring.length / 2) | 0] < 110) inverted = true;
+    }
+    if(inverted) for(let j = 0; j < gray.length; j++) gray[j] = 255 - gray[j];
+    stats.ink = inverted ? 'light-on-dark' : 'dark-on-light';
+
+    // flatten uneven lighting: divide by the smoothed background estimate,
+    // so a shadow across the photo no longer reads as one giant ink blob
+    let norm = gray;
+    if(opts.flatten){
+      const { bg, sw, sh } = estimateBackground(gray, w, h);
+      norm = new Uint8ClampedArray(w * h);
+      for(let y = 0; y < h; y++){
+        const row = y * w;
+        for(let x = 0; x < w; x++){
+          const b = Math.max(24, bgAt(bg, sw, sh, x, y, w, h));
+          norm[row + x] = Math.min(255, gray[row + x] * 242 / b);
+        }
+      }
+    }
+
+    const total = w * h;
     const hist = new Uint32Array(256);
-    for(let i = 0, j = 0; i < px.length; i += 4, j++){
-      const g = (px[i] * 0.299 + px[i+1] * 0.587 + px[i+2] * 0.114) | 0;
-      gray[j] = g;
-      hist[g]++;
-    }
-    if(opts.invert){ // light ink on dark paper → flip so ink is always "dark"
-      for(let j = 0; j < gray.length; j++) gray[j] = 255 - gray[j];
-      hist.fill(0);
-      for(let j = 0; j < gray.length; j++) hist[gray[j]]++;
-    }
-    {
-      const gc = document.createElement('canvas');
-      gc.width = w; gc.height = h;
-      const gctx = gc.getContext('2d');
-      const gd = gctx.createImageData(w, h);
-      for(let j = 0; j < gray.length; j++){ const o = j * 4; gd.data[o] = gd.data[o+1] = gd.data[o+2] = gray[j]; gd.data[o+3] = 255; }
-      gctx.putImageData(gd, 0, 0);
-      snap('1 · gray', gc);
+    for(let j = 0; j < total; j++) hist[norm[j]]++;
+    const cum = new Uint32Array(256);
+    let acc = 0;
+    for(let t = 0; t < 256; t++){ acc += hist[t]; cum[t] = acc; }
+
+    let thr = opts.autoThreshold ? otsu(hist, total) : opts.threshold;
+    if(opts.autoThreshold){
+      // Otsu can split a noisy histogram on the paper side and blacken the
+      // whole frame — cap auto-selected ink coverage at 35%
+      while(thr > 1 && cum[thr - 1] / total > 0.35) thr--;
     }
 
-    // 2 · threshold (Otsu auto or manual)
-    const thr = opts.autoThreshold ? otsu(hist, w * h) : opts.threshold;
-    stats.threshold = thr + (opts.autoThreshold ? ' (auto)' : ' (manual)');
-
-    // 3 · ink mask + soft alpha
-    const soft = opts.softEdges ? 24 : 1; // gray levels of edge feathering
-    const mask = new Uint8Array(w * h);
-    const alpha = new Uint8Array(w * h);
+    const band = opts.softEdges ? 26 : 2;
+    const alpha = new Uint8Array(total);
+    const mask = new Uint8Array(total);
     let inkCount = 0;
-    for(let j = 0; j < gray.length; j++){
-      const a = Math.max(0, Math.min(255, Math.round((thr - gray[j]) * 255 / soft)));
+    for(let j = 0; j < total; j++){
+      const a = Math.max(0, Math.min(255, Math.round((thr - norm[j]) * 255 / band)));
       alpha[j] = a;
-      if(a > 0){ mask[j] = 1; inkCount++; }
+      if(a > 16){ mask[j] = 1; inkCount++; }
     }
-    stats.inkPct = ((inkCount / (w * h)) * 100).toFixed(1) + '%';
-    {
-      const bc = document.createElement('canvas');
-      bc.width = w; bc.height = h;
-      const bctx = bc.getContext('2d');
-      const bd = bctx.createImageData(w, h);
-      for(let j = 0; j < mask.length; j++){ const o = j * 4; const v = mask[j] ? 0 : 255; bd.data[o] = bd.data[o+1] = bd.data[o+2] = v; bd.data[o+3] = 255; }
-      bctx.putImageData(bd, 0, 0);
-      snap(`2 · binary thr=${thr}`, bc);
-    }
+    stats.threshold = thr + (opts.autoThreshold ? ' auto' : '');
+    stats.inkPct = ((inkCount / total) * 100).toFixed(1) + '%';
 
-    // 4 · despeckle
     const { kept, dropped } = despeckle(mask, w, h, Math.max(1, opts.minBlob));
     stats.blobs = `${kept} kept / ${dropped} dropped`;
-    for(let j = 0; j < mask.length; j++) if(!mask[j]) alpha[j] = 0;
-    {
-      const dc = document.createElement('canvas');
-      dc.width = w; dc.height = h;
-      const dctx = dc.getContext('2d');
-      const dd = dctx.createImageData(w, h);
-      for(let j = 0; j < mask.length; j++){ const o = j * 4; const v = mask[j] ? 0 : 255; dd.data[o] = dd.data[o+1] = dd.data[o+2] = v; dd.data[o+3] = 255; }
-      dctx.putImageData(dd, 0, 0);
-      snap('3 · despeckled', dc);
-    }
+    for(let j = 0; j < total; j++) if(!mask[j]) alpha[j] = 0;
 
-    // 5 · crop bounds
     let minX = w, minY = h, maxX = -1, maxY = -1;
     for(let y = 0; y < h; y++){
       const row = y * w;
-      for(let x = 0; x < w; x++){
-        if(mask[row + x]){
-          if(x < minX) minX = x;
-          if(x > maxX) maxX = x;
-          if(y < minY) minY = y;
-          if(y > maxY) maxY = y;
-        }
+      for(let x = 0; x < w; x++) if(mask[row + x]){
+        if(x < minX) minX = x;
+        if(x > maxX) maxX = x;
+        if(y < minY) minY = y;
+        if(y > maxY) maxY = y;
       }
     }
     let cx = 0, cy = 0, cw = w, ch = h;
@@ -1353,7 +1609,6 @@ const SigTool = (() => {
     }
     stats.out = `${cw}×${ch}`;
 
-    // 6 · composite RGBA output (cropped, recolored, transparent bg)
     const [ir, ig, ib] = opts.inkColor;
     const out = document.createElement('canvas');
     out.width = cw; out.height = ch;
@@ -1361,40 +1616,21 @@ const SigTool = (() => {
     const od = octx.createImageData(cw, ch);
     const op = od.data;
     for(let y = 0; y < ch; y++){
-      const srcRow = (y + cy) * w + cx;
-      const dstRow = y * cw;
+      const srcRow = (y + cy) * w + cx, dstRow = y * cw;
       for(let x = 0; x < cw; x++){
-        const a = alpha[srcRow + x];
         const o = (dstRow + x) * 4;
-        op[o] = ir; op[o+1] = ig; op[o+2] = ib; op[o+3] = a;
+        op[o] = ir; op[o+1] = ig; op[o+2] = ib; op[o+3] = alpha[srcRow + x];
       }
     }
     octx.putImageData(od, 0, 0);
-    snap('4 · result', out);
-    return { canvas: out, stats, steps, threshold: thr };
+    return { canvas: out, stats, threshold: thr };
   }
 
-  /* ---- UI ---- */
+  /* ---- UI helpers ---- */
   function hexToRgb(hex){
     const m = /^#?([0-9a-f]{6})$/i.exec(hex);
     const n = m ? parseInt(m[1], 16) : 0;
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  }
-
-  function pipeStep(label, canvas, dlName, targetW = 130){
-    const wrap = document.createElement('div');
-    wrap.className = 'pipe-step';
-    const lbl = document.createElement('span');
-    lbl.className = 'pipe-lbl'; lbl.textContent = label;
-    const c = document.createElement('canvas');
-    const scale = targetW / canvas.width;
-    c.width = targetW; c.height = Math.max(1, Math.round(canvas.height * scale));
-    c.getContext('2d').drawImage(canvas, 0, 0, c.width, c.height);
-    const dl = document.createElement('button');
-    dl.className = 'pipe-dl'; dl.textContent = '↓ save';
-    dl.onclick = () => canvas.toBlob(b => downloadBlob(b, `debug_${dlName}.png`), 'image/png');
-    wrap.append(lbl, c, dl);
-    return wrap;
   }
 
   function downloadCanvas(canvas, scale, filename){
@@ -1524,200 +1760,228 @@ const SigTool = (() => {
     };
   }
 
-  let cardSeq = 0;
-  function createCard(img, filename){
-    const id = 'sig' + (++cardSeq);
-    const card = document.createElement('div');
-    card.className = 'sig-card';
-    card.innerHTML = `
-      <div class="sig-titlebar">
-        <span class="fname">${filename.replace(/</g,'&lt;')}</span>
-        <div class="stat-row" id="stats-${id}"></div>
-        <button class="btn btn-sm btn-danger" id="rm-${id}" title="Remove">✕</button>
-      </div>
-      <div class="sig-body">
-        <div class="sig-preview">
-          <div class="canvas-wrapper" id="wrap-${id}">
-            <canvas class="sig-canvas" id="canvas-${id}"></canvas>
-          </div>
-        </div>
-        <div class="sig-controls">
-          <div class="sig-cg">
-            <div class="cg-label">Threshold</div>
-            <div class="tgl-row">
-              <div><div class="tgl-lbl">Auto (Otsu)</div><div class="tgl-sub">Histogram-optimal split</div></div>
-              <label class="pill"><input type="checkbox" id="auto-${id}" checked><span class="tr"></span></label>
-            </div>
-            <div class="cg">
-              <span class="cg-label">Level <span class="val" id="thrv-${id}">–</span></span>
-              <input type="range" min="0" max="255" value="160" id="thr-${id}" disabled>
-              <span class="hint">Higher = more pixels counted as ink.</span>
-            </div>
-            <div class="tgl-row">
-              <div><div class="tgl-lbl">Invert</div><div class="tgl-sub">Light ink on dark paper</div></div>
-              <label class="pill"><input type="checkbox" id="inv-${id}"><span class="tr"></span></label>
-            </div>
-            <div class="tgl-row">
-              <div><div class="tgl-lbl">Soft edges</div><div class="tgl-sub">Feathered anti-aliased ink</div></div>
-              <label class="pill"><input type="checkbox" id="soft-${id}" checked><span class="tr"></span></label>
-            </div>
-          </div>
-          <div class="sig-cg">
-            <div class="cg-label">Cleanup</div>
-            <div class="cg">
-              <span class="cg-label">Despeckle — min blob px <span class="val" id="spkv-${id}">30</span></span>
-              <input type="range" min="1" max="300" value="30" id="spk-${id}">
-              <span class="hint">Connected ink regions smaller than this are removed.</span>
-            </div>
-            <div class="cg">
-              <span class="cg-label">Crop padding <span class="val" id="padv-${id}">8</span></span>
-              <input type="range" min="0" max="60" value="8" id="pad-${id}">
-            </div>
-          </div>
-          <div class="sig-cg">
-            <div class="cg-label">Ink color</div>
-            <div class="seg">
-              <input type="radio" name="ink-${id}" id="ink-black-${id}" value="#000000" checked><label for="ink-black-${id}">Black</label>
-              <input type="radio" name="ink-${id}" id="ink-blue-${id}" value="#1e40af"><label for="ink-blue-${id}">Blue</label>
-              <input type="radio" name="ink-${id}" id="ink-custom-${id}" value="custom"><label for="ink-custom-${id}">Custom</label>
-            </div>
-            <div class="tgl-row">
-              <span class="tgl-sub">Custom color</span>
-              <input type="color" id="inkc-${id}" value="#14532d">
-            </div>
-          </div>
-          <div class="sig-cg">
-            <div class="cg-label">Eraser</div>
-            <div class="cg">
-              <span class="cg-label">Brush size <span class="val" id="esv-${id}">20</span></span>
-              <input type="range" min="4" max="120" value="20" id="esize-${id}">
-              <span class="hint">Paint on the preview to erase. Re-processing resets manual edits.</span>
-            </div>
-            <div class="btn-row">
-              <button class="btn btn-sm grow" id="etgl-${id}">✎ Eraser</button>
-              <button class="btn btn-sm" id="eundo-${id}" title="Undo erase">↩</button>
-            </div>
-          </div>
-          <div class="sig-cg">
-            <div class="cg-label">Export</div>
-            <div class="seg" id="scale-${id}">
-              <input type="radio" name="scale-${id}" id="s1-${id}" value="1" checked><label for="s1-${id}">1×</label>
-              <input type="radio" name="scale-${id}" id="s2-${id}" value="2"><label for="s2-${id}">2×</label>
-              <input type="radio" name="scale-${id}" id="s4-${id}" value="4"><label for="s4-${id}">4×</label>
-            </div>
-            <span class="hint">2×/4× use nearest-neighbour upscaling (crisp edges), applied at download only.</span>
-            <button class="btn btn-gold" id="dl-${id}">↓ Download transparent PNG</button>
-          </div>
-          <details class="dbg">
-            <summary>Processing log</summary>
-            <div class="log-panel" id="log-${id}"></div>
-          </details>
-        </div>
-      </div>
-      <div class="pipeline-wrap">
-        <details>
-          <summary>Pipeline steps</summary>
-          <div class="pipeline" id="pipe-${id}"></div>
-        </details>
-      </div>`;
-    gallery.prepend(card);
+  /* ---- UI: one preview + thumbnail strip + one shared control panel ---- */
+  const stage = $('sig-stage'), emptyHint = $('sig-emptyhint'), strip = $('sig-strip');
+  const addBtn = $('sig-add'), input = $('sig-input');
+  const statline = $('sig-statline');
+  const autoChk = $('sig-auto'), thrSlider = $('sig-thr'), thrVal = $('sig-thrv');
+  const flatChk = $('sig-flat'), softChk = $('sig-soft');
+  const spkSlider = $('sig-spk'), spkVal = $('sig-spkv');
+  const padSlider = $('sig-pad'), padVal = $('sig-padv');
+  const customColor = $('sig-inkc');
+  const eraserSize = $('sig-esize'), eraserSzVal = $('sig-esv');
+  const etgl = $('sig-etgl'), eundo = $('sig-eundo');
+  const dlBtn = $('sig-dl'), dlAllBtn = $('sig-dlall');
 
-    const canvas = card.querySelector(`#canvas-${id}`);
-    const wrapper = card.querySelector(`#wrap-${id}`);
-    const logEl = card.querySelector(`#log-${id}`);
-    const log = (msg, type = 'info') => {
-      const s = document.createElement('span');
-      s.className = 'log-' + type;
-      s.textContent = msg + '\n';
-      logEl.appendChild(s);
-      logEl.scrollTop = logEl.scrollHeight;
-    };
+  const items = [];
+  let current = null, seq = 0;
 
-    const el = k => card.querySelector(`#${k}-${id}`);
-    const autoChk = el('auto'), thrSlider = el('thr'), thrVal = el('thrv');
-    const invChk = el('inv'), softChk = el('soft');
-    const spkSlider = el('spk'), spkVal = el('spkv');
-    const padSlider = el('pad'), padVal = el('padv');
-    const customColor = el('inkc');
-    const eraserSize = el('esize'), eraserSzVal = el('esv');
-    const statsEl = el('stats'), pipeEl = el('pipe');
+  const defaults = () => ({ auto: true, thr: 160, flatten: true, soft: true, polarity: 'auto', minBlob: 30, pad: 8, ink: '#000000', custom: '#14532d' });
 
-    eraserSize.addEventListener('input', () => eraserSzVal.textContent = eraserSize.value);
-
-    const inkColor = () => {
-      const v = card.querySelector(`input[name="ink-${id}"]:checked`).value;
-      return hexToRgb(v === 'custom' ? customColor.value : v);
-    };
-
-    const update = () => {
-      spkVal.textContent = spkSlider.value;
-      padVal.textContent = padSlider.value;
-      thrSlider.disabled = autoChk.checked;
-      const t0 = performance.now();
-      const { canvas: result, stats, steps, threshold } = processSignature(img, {
-        autoThreshold: autoChk.checked,
-        threshold: parseInt(thrSlider.value, 10),
-        invert: invChk.checked,
-        minBlob: parseInt(spkSlider.value, 10),
-        pad: parseInt(padSlider.value, 10),
-        softEdges: softChk.checked,
-        inkColor: inkColor(),
-      });
-      if(autoChk.checked) thrSlider.value = threshold;
-      thrVal.textContent = threshold;
-      canvas.width = result.width;
-      canvas.height = result.height;
-      canvas.getContext('2d').drawImage(result, 0, 0);
-      statsEl.innerHTML = '';
-      for(const [k, v] of Object.entries(stats)){
-        const b = document.createElement('span');
-        b.className = 'badge' + (k === 'warning' ? ' low' : '');
-        b.innerHTML = `${k}: <b></b>`;
-        b.querySelector('b').textContent = v;
-        statsEl.appendChild(b);
-      }
-      pipeEl.innerHTML = '';
-      steps.forEach((s, i) => pipeEl.appendChild(pipeStep(s.label, s.canvas, `${id}_step${i}`)));
-      const etgl = el('etgl');
-      etgl.textContent = '✎ Eraser';
-      etgl.classList.remove('btn-danger');
-      canvas.style.cursor = '';
-      setupEraser(canvas, wrapper, eraserSize, etgl, el('eundo'));
-      log(`processed in ${(performance.now() - t0).toFixed(0)} ms — thr=${threshold} ${stats.inkPct} ink, blobs ${stats.blobs}, out ${stats.out}`, stats.warning ? 'warn' : 'ok');
-    };
-
-    [autoChk, invChk, softChk].forEach(c => c.addEventListener('change', update));
-    [thrSlider, spkSlider, padSlider].forEach(s => s.addEventListener('change', update));
-    thrSlider.addEventListener('input', () => thrVal.textContent = thrSlider.value);
-    spkSlider.addEventListener('input', () => spkVal.textContent = spkSlider.value);
-    padSlider.addEventListener('input', () => padVal.textContent = padSlider.value);
-    card.querySelectorAll(`input[name="ink-${id}"]`).forEach(r => r.addEventListener('change', update));
-    customColor.addEventListener('change', () => { el('ink-custom').checked = true; update(); });
-
-    el('dl').onclick = () => {
-      const scale = card.querySelector(`#scale-${id} input:checked`).value;
-      const base = filename.replace(/\.[^.]+$/, '');
-      downloadCanvas(canvas, scale, `Signature_${base}.png`);
-    };
-    el('rm').onclick = () => card.remove();
-
-    log(`loaded ${filename} (${(img.naturalWidth || img.width)}×${(img.naturalHeight || img.height)})`, 'info');
-    update();
+  function uiToSettings(s){
+    s.auto = autoChk.checked;
+    s.thr = parseInt(thrSlider.value, 10);
+    s.flatten = flatChk.checked;
+    s.soft = softChk.checked;
+    s.polarity = document.querySelector('input[name="sig-pol"]:checked').value;
+    s.minBlob = parseInt(spkSlider.value, 10);
+    s.pad = parseInt(padSlider.value, 10);
+    s.ink = document.querySelector('input[name="sig-ink"]:checked').value;
+    s.custom = customColor.value;
+  }
+  function settingsToUI(s){
+    autoChk.checked = s.auto;
+    thrSlider.value = s.thr;
+    thrSlider.disabled = s.auto;
+    flatChk.checked = s.flatten;
+    softChk.checked = s.soft;
+    document.querySelector(`input[name="sig-pol"][value="${s.polarity}"]`).checked = true;
+    spkSlider.value = s.minBlob; spkVal.textContent = s.minBlob;
+    padSlider.value = s.pad; padVal.textContent = s.pad;
+    (document.querySelector(`input[name="sig-ink"][value="${s.ink}"]`) || $('sig-ink-custom')).checked = true;
+    customColor.value = s.custom;
   }
 
-  function handleFiles(files){
-    files.forEach(file => {
-      if(!file.type || !file.type.startsWith('image/')) return;
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => { createCard(img, file.name); URL.revokeObjectURL(url); };
-      img.onerror = () => URL.revokeObjectURL(url);
-      img.src = url;
+  function paintThumb(item){
+    const t = item.thumbCanvas;
+    const s = Math.min(44 / item.canvas.width, 44 / item.canvas.height);
+    t.width = Math.max(1, Math.round(item.canvas.width * s));
+    t.height = Math.max(1, Math.round(item.canvas.height * s));
+    t.getContext('2d').drawImage(item.canvas, 0, 0, t.width, t.height);
+  }
+
+  function syncStatline(){
+    if(!current){ statline.textContent = 'No image loaded.'; return; }
+    const st = current.stats;
+    statline.textContent = `${current.name} · ${st.in} → ${st.out} · thr ${st.threshold} · ink ${st.inkPct} (${st.ink}) · blobs ${st.blobs}` + (st.warning ? ` · ⚠ ${st.warning}` : '');
+  }
+
+  function reprocess(item){
+    const s = item.settings;
+    const r = processSignature(item.img, {
+      autoThreshold: s.auto, threshold: s.thr, flatten: s.flatten,
+      polarity: s.polarity, minBlob: s.minBlob, pad: s.pad, softEdges: s.soft,
+      inkColor: hexToRgb(s.ink === 'custom' ? s.custom : s.ink),
     });
+    item.stats = r.stats;
+    item.threshold = r.threshold;
+    item.canvas.width = r.canvas.width;
+    item.canvas.height = r.canvas.height;
+    item.canvas.getContext('2d').drawImage(r.canvas, 0, 0);
+    paintThumb(item);
+    if(item === current){
+      if(s.auto) thrSlider.value = r.threshold;
+      thrVal.textContent = r.threshold;
+      syncStatline();
+    }
   }
-  wireDrop($('sig-drop'), $('sig-input'), handleFiles, { multiple: true });
 
-  return { processSignature, otsu, despeckle };
+  function resetEraserUI(){
+    etgl.textContent = '✎ Eraser';
+    etgl.classList.remove('btn-danger');
+    const cur = stage.querySelector('.eraser-cursor');
+    if(cur) cur.style.display = 'none';
+  }
+
+  function activate(item){
+    current = item;
+    items.forEach(it => {
+      it.thumbBtn.classList.toggle('active', it === item);
+      it.canvas.classList.toggle('hidden', it !== item);
+    });
+    emptyHint.classList.add('hidden');
+    settingsToUI(item.settings);
+    thrVal.textContent = item.threshold;
+    if(item.settings.auto) thrSlider.value = item.threshold;
+    syncStatline();
+    dlBtn.disabled = false;
+    resetEraserUI();
+    item.canvas.style.cursor = '';
+    setupEraser(item.canvas, stage, eraserSize, etgl, eundo);
+  }
+
+  function removeItem(item){
+    const i = items.indexOf(item);
+    if(i < 0) return;
+    items.splice(i, 1);
+    item.thumbBtn.remove();
+    item.canvas.remove();
+    if(current === item){
+      current = null;
+      if(items.length) activate(items[Math.min(i, items.length - 1)]);
+      else {
+        emptyHint.classList.remove('hidden');
+        dlBtn.disabled = true;
+        thrVal.textContent = '–';
+        resetEraserUI();
+        syncStatline();
+      }
+    }
+    dlAllBtn.classList.toggle('hidden', items.length < 2);
+  }
+
+  function addItem(img, name){
+    const item = {
+      id: ++seq, img, name, settings: defaults(), stats: null, threshold: 0,
+      canvas: document.createElement('canvas'),
+      thumbBtn: document.createElement('button'),
+      thumbCanvas: document.createElement('canvas'),
+    };
+    item.canvas.className = 'sig-canvas hidden';
+    stage.appendChild(item.canvas);
+    item.thumbBtn.className = 'sig-thumb';
+    item.thumbBtn.title = name;
+    const x = document.createElement('span');
+    x.className = 'tx'; x.textContent = '✕';
+    item.thumbBtn.append(item.thumbCanvas, x);
+    item.thumbBtn.addEventListener('click', e => {
+      if(e.target === x){ removeItem(item); return; }
+      activate(item);
+    });
+    strip.insertBefore(item.thumbBtn, addBtn);
+    items.push(item);
+    reprocess(item);
+    activate(item);
+    dlAllBtn.classList.toggle('hidden', items.length < 2);
+  }
+
+  async function open(files){
+    for(const f of files){
+      if(!isImageLike(f)) continue;
+      let file;
+      try { file = await normalizeImageFile(f); }
+      catch(err){ statline.textContent = 'Error: ' + (err && err.message || err); continue; }
+      await new Promise(res => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { addItem(img, f.name); URL.revokeObjectURL(url); res(); };
+        img.onerror = () => { URL.revokeObjectURL(url); res(); };
+        img.src = url;
+      });
+    }
+  }
+
+  /* stage is the dropzone; clicking it only browses while empty (else it is the eraser surface) */
+  ['dragenter','dragover'].forEach(ev => stage.addEventListener(ev, e => { e.preventDefault(); stage.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev => stage.addEventListener(ev, e => { e.preventDefault(); stage.classList.remove('dragover'); }));
+  stage.addEventListener('drop', e => {
+    const fs = e.dataTransfer && e.dataTransfer.files;
+    if(fs && fs.length) open(Array.from(fs));
+  });
+  emptyHint.addEventListener('click', () => input.click());
+  emptyHint.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); input.click(); } });
+  addBtn.addEventListener('click', () => input.click());
+  input.addEventListener('change', e => {
+    if(e.target.files.length) open(Array.from(e.target.files));
+    e.target.value = '';
+  });
+  window.addEventListener('paste', e => {
+    if(!$('tool-signature').classList.contains('active')) return;
+    const fs = e.clipboardData && e.clipboardData.files;
+    if(fs && fs.length) open(Array.from(fs).filter(isImageLike));
+  });
+
+  const onControlChange = () => {
+    thrSlider.disabled = autoChk.checked;
+    if(!current) return;
+    uiToSettings(current.settings);
+    reprocess(current);
+  };
+  [autoChk, flatChk, softChk].forEach(c => c.addEventListener('change', onControlChange));
+  [thrSlider, spkSlider, padSlider].forEach(s => s.addEventListener('change', onControlChange));
+  thrSlider.addEventListener('input', () => thrVal.textContent = thrSlider.value);
+  spkSlider.addEventListener('input', () => spkVal.textContent = spkSlider.value);
+  padSlider.addEventListener('input', () => padVal.textContent = padSlider.value);
+  eraserSize.addEventListener('input', () => eraserSzVal.textContent = eraserSize.value);
+  document.querySelectorAll('input[name="sig-pol"], input[name="sig-ink"]').forEach(r => r.addEventListener('change', onControlChange));
+  customColor.addEventListener('change', () => { $('sig-ink-custom').checked = true; onControlChange(); });
+
+  dlBtn.addEventListener('click', () => {
+    if(!current) return;
+    const scale = document.querySelector('input[name="sig-scale"]:checked').value;
+    downloadCanvas(current.canvas, scale, `Signature_${current.name.replace(/\.[^.]+$/, '')}.png`);
+  });
+  dlAllBtn.addEventListener('click', async () => {
+    if(!items.length) return;
+    const scale = parseInt(document.querySelector('input[name="sig-scale"]:checked').value, 10) || 1;
+    const entries = [];
+    for(const it of items){
+      let src = it.canvas;
+      if(scale !== 1){
+        const c = document.createElement('canvas');
+        c.width = src.width * scale; c.height = src.height * scale;
+        const ctx = c.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(src, 0, 0, c.width, c.height);
+        src = c;
+      }
+      const blob = await new Promise(r => src.toBlob(r, 'image/png'));
+      entries.push({ name: `Signature_${it.name.replace(/\.[^.]+$/, '')}_${it.id}.png`, blob });
+    }
+    downloadBlob(await makeZip(entries), 'signatures.zip');
+  });
+
+  return { processSignature, otsu, despeckle, estimateBackground, open };
 })();
 
 /* ════════════════════════════════════════════════════════════════
@@ -1742,8 +2006,13 @@ const ImgTool = (() => {
   }
 
   function addFiles(files){
-    files.forEach(file => {
-      if(!file.type || !file.type.startsWith('image/')) return;
+    files.forEach(async orig => {
+      if(!isImageLike(orig)) return;
+      const srcType = isHeicName(orig.name) || /hei[cf]/.test(orig.type || '')
+        ? 'HEIC' : (orig.type.split('/')[1] || '?').toUpperCase();
+      let file;
+      try { file = await normalizeImageFile(orig); }
+      catch(e){ statusEl.textContent = 'Error: ' + (e && e.message || e); return; }
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
@@ -1760,7 +2029,7 @@ const ImgTool = (() => {
             </div>
           </div>`;
         card.querySelector('.thumb img').src = url;
-        card.querySelector('.chip').textContent = (file.type.split('/')[1] || '?').toUpperCase();
+        card.querySelector('.chip').textContent = srcType;
         card.querySelector('.dims').textContent = `${img.naturalWidth}×${img.naturalHeight} · ${fmtBytes(file.size)}`;
         const item = { file, name: file.name, img, outBlob: null, outExt: null, card };
         card.querySelector('.rm-btn').addEventListener('click', () => {
@@ -1852,7 +2121,7 @@ const ImgTool = (() => {
     refreshCount();
   });
 
-  return {};
+  return { open: addFiles };
 })();
 
 /* ════════════════════════════════════════════════════════════════
@@ -2096,17 +2365,107 @@ const TranscodeTool = (() => {
     }, 30);
   });
 
-  return { build, encodeWav };
+  return {
+    build, encodeWav,
+    openAudio: loadAudio,
+    setVideoName(name){ $('tc-input').value = name; render(); },
+  };
+})();
+
+/* ════════════════════════════════════════════════════════════════
+   0 · DETECT  (unified entry: identify a file, offer the outcomes)
+   ════════════════════════════════════════════════════════════════ */
+const AutoTool = (() => {
+  const drop = $('auto-drop'), result = $('auto-result'), outcomes = $('auto-outcomes');
+
+  function outcomeBtn(icon, title, desc, fn){
+    const b = document.createElement('button');
+    b.className = 'oc-card';
+    b.innerHTML = '<div class="oc-t"><span></span><span></span></div><div class="oc-d"></div>';
+    const [i, t] = b.querySelectorAll('.oc-t span');
+    i.textContent = icon; t.textContent = title;
+    b.querySelector('.oc-d').textContent = desc;
+    b.addEventListener('click', fn);
+    return b;
+  }
+
+  async function receive(files){
+    files = Array.from(files || []);
+    if(!files.length) return;
+    showTool('auto');
+    const first = files[0];
+    const info = await sniffFile(first);
+    $('auto-name').textContent = files.length > 1 ? `${first.name} (+${files.length - 1} more)` : first.name;
+    $('auto-meta').textContent = `${info.label} · ${fmtBytes(files.reduce((s, f) => s + f.size, 0))}`;
+    $('auto-ico').textContent = ({ pdf: 'PDF', image: 'IMG', heic: 'HEIC', audio: 'AUD', video: 'VID' })[info.kind] || 'BIN';
+    outcomes.innerHTML = '';
+    const add = (...a) => outcomes.appendChild(outcomeBtn(...a));
+
+    if(info.kind === 'pdf'){
+      add('📄', 'Convert pages to images', 'Render every page to PNG, JPEG or WebP at any DPI — download singly or as ZIP.',
+        () => { PdfTool.open(first); showTool('pdf'); });
+      add('🔍', 'OCR the content', 'Render pages to images first (opens PDF → Images), then feed a page to OCR.',
+        () => { PdfTool.open(first); showTool('pdf'); });
+    } else if(info.kind === 'image' || info.kind === 'heic'){
+      add('🖼️', 'Convert format / resize', (info.kind === 'heic' ? 'Decode HEIC locally and re-encode' : 'Re-encode') + ' to PNG, JPEG or WebP, with optional downscaling and batch ZIP.',
+        () => { ImgTool.open(files); showTool('images'); });
+      add('🔍', 'Extract text (OCR)', 'Recognize English, Spanish or Portuguese text — fully offline.',
+        () => { OcrTool.open(first); showTool('ocr'); });
+      add('✒️', 'Signature cleanup', 'Flatten lighting, threshold, despeckle, crop and recolor into a transparent PNG.',
+        () => { SigTool.open(files); showTool('signature'); });
+    } else if(info.kind === 'audio'){
+      add('🎵', 'Convert to WAV', 'Decode in this browser and export 16-bit PCM WAV — no upload.',
+        () => { TranscodeTool.openAudio(first); showTool('transcode'); });
+      add('⚙️', 'Build ffmpeg command', 'Generate the exact ffmpeg line for this file name.',
+        () => { TranscodeTool.setVideoName(first.name); showTool('transcode'); });
+    } else if(info.kind === 'video'){
+      add('⚙️', 'Build ffmpeg command', 'H.264 / H.265 / AV1 / VP9, hardware encoders, quality, scaling, audio and subtitles.',
+        () => { TranscodeTool.setVideoName(first.name); showTool('transcode'); });
+      add('🎵', 'Extract audio → WAV', 'Decode the audio track in-browser and export it as WAV.',
+        () => { TranscodeTool.openAudio(first); showTool('transcode'); });
+    } else {
+      const bytes = new Uint8Array(await first.slice(0, 16).arrayBuffer());
+      const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+      const box = document.createElement('div');
+      box.className = 'auto-hex';
+      box.style.gridColumn = '1 / -1';
+      box.textContent = `No tool here handles this type. First bytes: ${hex}`;
+      outcomes.appendChild(box);
+      add('🔬', 'Inspect metadata', 'Open metadata.carino.systems — magic-byte analysis, metadata extraction and editing for any file.',
+        () => window.open('https://metadata.carino.systems', '_blank', 'noopener'));
+    }
+    result.classList.remove('hidden');
+  }
+
+  wireDrop(drop, $('auto-input'), receive, { multiple: true });
+  $('auto-clear').addEventListener('click', () => {
+    result.classList.add('hidden');
+    outcomes.innerHTML = '';
+  });
+
+  /* global paste: any tab except the ones with their own paste handling */
+  window.addEventListener('paste', e => {
+    const fs = e.clipboardData && e.clipboardData.files;
+    if(!fs || !fs.length) return;
+    const files = Array.from(fs);
+    if($('tool-ocr').classList.contains('active') && files.every(isImageLike)) return;      // OCR takes it
+    if($('tool-signature').classList.contains('active') && files.every(isImageLike)) return; // Signature takes it
+    receive(files);
+  });
+
+  return { receive };
 })();
 
 /* expose internals for testing / power users */
 window.MediaTools = {
-  makeZip, crc32, downloadBlob,
+  makeZip, crc32, downloadBlob, sniffFile, normalizeImageFile,
   processSignature: SigTool.processSignature,
+  estimateBackground: SigTool.estimateBackground,
   buildFfmpegCommand: TranscodeTool.build,
   encodeWav: TranscodeTool.encodeWav,
   parsePageRange: PdfTool.parseRange,
   tesseractOptions: OcrTool.TESS_OPTS,
+  detect: AutoTool.receive,
 };
 </script>
 
