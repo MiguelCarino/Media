@@ -1,0 +1,2116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Media — Carino Systems</title>
+  <meta name="description" content="Client-side file & media suite: PDF to images, OCR, signature cleanup, image conversion, ffmpeg command builder and audio to WAV. Everything runs in your browser.">
+  <link rel="icon" type="image/webp" href="logo.webp">
+  <link rel="stylesheet" href="fonts/carino-fonts.css">
+  <style>
+    /* ─── Carino tokens (branding.carino.systems) ─────────────── */
+    :root {
+      --bg:            #050505;
+      --bg-elev:       #0d0d0d;
+      --bg-card:       #0b0b0b;
+      --accent:        #eab308;
+      --accent-bright: #fde047;
+      --accent-faint:  rgba(234,179,8,0.05);
+      --accent-glow:   rgba(234,179,8,0.15);
+      --accent-dim:    rgba(234,179,8,0.30);
+      --border:        #262626;
+      --text:          #ffffff;
+      --text-sec:      #a3a3a3;
+      --text-muted:    #666666;
+      --ok:            #22c55e;
+      --warn:          #eab308;
+      --err:           #ef4444;
+      --gold-text:     linear-gradient(130deg,#fef08a 0%,#eab308 50%,#b45309 100%);
+      --sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+      --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      --display: 'Red Hat Display', var(--sans);
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; }
+    :root { scrollbar-width: thin; scrollbar-color: #3a3a3a transparent; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 6px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
+    ::selection { background: var(--accent); color: #050505; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: var(--sans); font-size: 15px; line-height: 1.55;
+      min-height: 100vh; display: flex; flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); }
+    code { font-family: var(--mono); }
+
+    /* ─── Tool tab strip ──────────────────────────────────────── */
+    .tool-tabs {
+      display: flex; gap: 4px; flex-wrap: wrap;
+      padding: 10px 20px 0; border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
+      position: sticky; top: 0; z-index: 60;
+    }
+    .tool-tab {
+      appearance: none; background: transparent; border: none; cursor: pointer;
+      font-family: var(--mono); font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-sec); padding: 10px 14px 12px;
+      border-bottom: 2px solid transparent; transition: 0.15s;
+      display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+    }
+    .tool-tab svg { width: 14px; height: 14px; }
+    .tool-tab:hover { color: var(--accent); background: var(--accent-faint); }
+    .tool-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ─── Tool sections ───────────────────────────────────────── */
+    main { flex: 1; width: 100%; max-width: 1440px; margin: 0 auto; padding: 20px; }
+    .tool { display: none; }
+    .tool.active { display: block; }
+
+    .tool-head { margin-bottom: 18px; }
+    .tool-head h1 {
+      font-family: var(--display); font-weight: 900; font-size: 1.6rem;
+      text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px;
+      background: var(--gold-text); -webkit-background-clip: text;
+      background-clip: text; -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
+    .tool-head p { margin: 0; color: var(--text-sec); font-size: 0.85rem; max-width: 760px; }
+
+    /* ─── Panels / layout primitives ──────────────────────────── */
+    .split { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+    .split-even { display: grid; grid-template-columns: 1fr 1.1fr; gap: 16px; align-items: start; }
+    @media (max-width: 940px) { .split, .split-even { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .panel-head {
+      padding: 12px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.02), transparent);
+    }
+    .panel-title {
+      font-family: var(--mono); font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-sec);
+    }
+    .panel-body { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+
+    .badge {
+      padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border);
+      font-family: var(--mono); font-size: 0.66rem; font-weight: 600;
+      letter-spacing: 0.04em; color: var(--text); background: rgba(255,255,255,0.03);
+      white-space: nowrap;
+    }
+    .badge b { color: var(--accent); font-weight: 700; }
+    .badge.low  { border-color: var(--err); color: var(--err); }
+    .badge.med  { border-color: var(--warn); color: var(--warn); }
+    .badge.high { border-color: var(--ok); color: var(--ok); }
+
+    /* ─── Controls ────────────────────────────────────────────── */
+    .cg { display: flex; flex-direction: column; gap: 8px; }
+    .cg-label {
+      font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted);
+      display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    }
+    .cg-label .val { color: var(--accent); font-size: 0.66rem; }
+
+    .seg { display: flex; background: var(--bg-elev); border: 1px solid var(--border); padding: 3px; border-radius: 8px; gap: 3px; flex-wrap: wrap; }
+    .seg input { display: none; }
+    .seg label {
+      flex: 1; text-align: center; padding: 7px 8px; font-size: 0.78rem; font-weight: 600;
+      border-radius: 6px; cursor: pointer; color: var(--text-sec); transition: 0.15s;
+      user-select: none; white-space: nowrap;
+    }
+    .seg input:checked + label { background: var(--accent); color: #050505; font-weight: 700; }
+    .seg label:hover { color: var(--text); }
+    .seg input:checked + label:hover { color: #050505; }
+
+    input[type="number"], input[type="text"], select {
+      width: 100%; padding: 9px 11px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg-elev);
+      color: var(--text); font-size: 0.88rem; font-family: inherit;
+    }
+    input[type="number"]:focus, input[type="text"]:focus, select:focus { border-color: var(--accent); outline: none; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+    input[type="color"] { width: 40px; height: 30px; padding: 2px; border: 1px solid var(--border); background: var(--bg-elev); border-radius: 6px; cursor: pointer; }
+
+    .btn {
+      appearance: none; padding: 10px 14px; border-radius: 8px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--bg-elev); color: var(--text);
+      font-family: inherit; font-size: 0.85rem; font-weight: 600; transition: 0.15s;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-faint); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn:disabled:hover { border-color: var(--border); color: var(--text); background: var(--bg-elev); }
+    .btn-gold { background: var(--accent); border-color: var(--accent); color: #050505; font-weight: 800; }
+    .btn-gold:hover { background: var(--accent-bright); border-color: var(--accent-bright); color: #050505; }
+    .btn-gold:disabled:hover { background: var(--accent); border-color: var(--accent); color: #050505; }
+    .btn-danger { border-color: #7f1d1d; color: #fca5a5; }
+    .btn-danger:hover { background: #7f1d1d; border-color: #991b1b; color: #fff; }
+    .btn-sm { padding: 6px 10px; font-size: 0.74rem; border-radius: 6px; }
+
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-row .grow { flex: 1; }
+
+    .tgl-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .tgl-lbl { font-size: 0.82rem; font-weight: 500; }
+    .tgl-sub { font-size: 0.66rem; color: var(--text-muted); }
+    .pill { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+    .pill input { opacity: 0; width: 0; height: 0; }
+    .pill .tr { position: absolute; inset: 0; background: #2a2a2a; border-radius: 999px; cursor: pointer; transition: background 0.2s; }
+    .pill .tr::after { content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #cfcfcf; transition: transform 0.2s, background 0.2s; }
+    .pill input:checked + .tr { background: var(--accent); }
+    .pill input:checked + .tr::after { transform: translateX(16px); background: #050505; }
+
+    .hint { font-size: 0.72rem; color: var(--text-muted); line-height: 1.5; }
+    .hint b { color: var(--accent); font-weight: 600; }
+
+    /* ─── Dropzones ───────────────────────────────────────────── */
+    .drop {
+      border: 2px dashed var(--border); border-radius: var(--radius);
+      padding: 20px 16px; text-align: center; cursor: pointer; transition: 0.18s;
+      background: rgba(255,255,255,0.015);
+    }
+    .drop:hover { border-color: var(--accent-dim); }
+    .drop.dragover { border-color: var(--accent); background: var(--accent-faint); box-shadow: 0 0 0 4px var(--accent-glow); }
+    .drop .d-ico { font-size: 1.5rem; margin-bottom: 6px; opacity: 0.9; }
+    .drop .d-title { font-weight: 700; font-size: 0.9rem; }
+    .drop .d-sub { font-size: 0.74rem; color: var(--text-muted); margin-top: 3px; }
+
+    .file-chip {
+      display: flex; align-items: center; gap: 10px; background: var(--bg-elev);
+      padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    }
+    .file-chip .f-ico {
+      width: 36px; height: 36px; flex-shrink: 0; background: var(--accent-faint);
+      color: var(--accent); border: 1px solid var(--accent-dim); border-radius: 6px;
+      display: grid; place-items: center; font-family: var(--mono); font-weight: 700; font-size: 0.6rem;
+    }
+    .file-chip .f-info { flex: 1; min-width: 0; }
+    .file-chip .f-name { font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-chip .f-meta { font-size: 0.68rem; color: var(--text-muted); font-family: var(--mono); }
+    .file-chip .f-x { background: none; border: none; color: var(--err); cursor: pointer; padding: 6px; font-size: 0.9rem; }
+
+    /* ─── Progress ────────────────────────────────────────────── */
+    .bar { height: 8px; border-radius: 999px; background: var(--bg-elev); border: 1px solid var(--border); overflow: hidden; }
+    .bar > div { height: 100%; width: 0%; background: var(--accent); transition: width 0.15s linear; }
+    .status-line { font-family: var(--mono); font-size: 0.7rem; color: var(--text-sec); min-height: 1.2em; }
+
+    /* ─── Result grids (PDF pages / images) ───────────────────── */
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+    .rcard { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; transition: border-color 0.15s; }
+    .rcard:hover { border-color: var(--accent-dim); }
+    .rcard .thumb {
+      height: 150px; display: grid; place-items: center; overflow: hidden;
+      border-bottom: 1px solid var(--border);
+      background-image: linear-gradient(45deg,#161616 25%,transparent 25%), linear-gradient(-45deg,#161616 25%,transparent 25%), linear-gradient(45deg,transparent 75%,#161616 75%), linear-gradient(-45deg,transparent 75%,#161616 75%);
+      background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      background-color: #101010;
+    }
+    .rcard .thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .rcard .rbody { padding: 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .rcard .rmeta { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-family: var(--mono); font-size: 0.64rem; color: var(--text-muted); }
+    .rcard .rmeta .chip { color: var(--accent); border: 1px solid var(--accent-dim); background: var(--accent-faint); padding: 1px 6px; border-radius: 4px; font-weight: 700; }
+
+    .empty-state {
+      text-align: center; padding: 56px 20px; color: var(--text-muted);
+      border: 2px dashed var(--border); border-radius: var(--radius);
+    }
+    .empty-state h3 { margin: 0 0 4px; font-family: var(--display); color: var(--text-sec); }
+    .empty-state p { margin: 0; font-size: 0.8rem; }
+
+    .hidden { display: none !important; }
+
+    /* ─── OCR specifics ───────────────────────────────────────── */
+    .preview-box {
+      height: clamp(200px, 34vh, 380px); display: flex; align-items: center; justify-content: center;
+      padding: 10px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px;
+    }
+    #ocr-preview { max-width: 100%; max-height: 100%; object-fit: contain; display: none; border-radius: 6px; background: #000; }
+    #ocr-preview.inverted { filter: invert(1) hue-rotate(180deg); }
+    #ocr-output {
+      flex: 1; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-elev);
+      padding: 13px; font-family: var(--mono); font-size: 13.5px; line-height: 1.6;
+      white-space: pre-wrap; overflow: auto; min-height: clamp(240px, 44vh, 520px);
+      overflow-wrap: anywhere;
+    }
+    .overlay {
+      position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+      background: rgba(5,5,5,0.85); backdrop-filter: blur(5px); z-index: 10; border-radius: var(--radius);
+    }
+    .overlay-card {
+      width: min(400px, 92%); background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px; text-align: center;
+    }
+    .relative { position: relative; }
+
+    /* ─── Signature specifics ─────────────────────────────────── */
+    .sig-gallery { display: flex; flex-direction: column; gap: 14px; }
+    .sig-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .sig-titlebar {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .sig-titlebar .fname {
+      font-family: var(--mono); font-size: 0.68rem; font-weight: 700; color: var(--text-sec);
+      letter-spacing: 0.05em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; flex: 1; min-width: 120px;
+    }
+    .sig-titlebar .stat-row { display: flex; flex-wrap: wrap; gap: 5px; }
+    .sig-body { display: grid; grid-template-columns: 1fr 300px; }
+    @media (max-width: 940px) { .sig-body { grid-template-columns: 1fr; } }
+    .sig-preview { padding: 12px; border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 320px; }
+    @media (max-width: 940px) { .sig-preview { border-right: none; border-bottom: 1px solid var(--border); } }
+    .canvas-wrapper {
+      flex: 1; min-height: 300px; position: relative;
+      background-color: #fff;
+      background-image: linear-gradient(45deg,#dce3ed 25%,transparent 25%), linear-gradient(-45deg,#dce3ed 25%,transparent 25%), linear-gradient(45deg,transparent 75%,#dce3ed 75%), linear-gradient(-45deg,transparent 75%,#dce3ed 75%);
+      background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      border-radius: 8px; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sig-canvas { max-width: 100%; max-height: 460px; object-fit: contain; display: block; position: relative; z-index: 1; }
+    .eraser-cursor {
+      position: absolute; z-index: 2; pointer-events: none;
+      border: 1.5px solid rgba(0,0,0,0.75); border-radius: 50%;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.6); transform: translate(-50%, -50%); display: none;
+    }
+    .sig-controls { padding: 12px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; max-height: 560px; }
+    .sig-cg { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 11px; display: flex; flex-direction: column; gap: 9px; }
+    .pipeline-wrap { border-top: 1px solid var(--border); }
+    .pipeline-wrap summary, details.dbg summary {
+      font-family: var(--mono); font-size: 0.62rem; font-weight: 700; color: var(--text-muted);
+      letter-spacing: 0.08em; text-transform: uppercase; list-style: none; cursor: pointer;
+      user-select: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+    }
+    details.dbg summary { padding: 2px 0; }
+    .pipeline-wrap summary::before, details.dbg summary::before { content: '▶'; font-size: 0.5rem; transition: transform 0.15s; }
+    .pipeline-wrap details[open] summary::before, details.dbg[open] summary::before { transform: rotate(90deg); }
+    .pipeline { display: flex; gap: 10px; overflow-x: auto; padding: 0 14px 12px; }
+    .pipe-step { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .pipe-step .pipe-lbl { font-family: var(--mono); font-size: 0.56rem; color: var(--text-muted); white-space: nowrap; }
+    .pipe-step canvas { border-radius: 6px; border: 1px solid var(--border); display: block; background: #fff; }
+    .pipe-dl { font-size: 0.58rem; padding: 2px 7px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); border-radius: 5px; cursor: pointer; font-family: var(--mono); font-weight: 600; }
+    .pipe-dl:hover { border-color: var(--accent); color: var(--accent); }
+    .log-panel {
+      background: #080808; border: 1px solid var(--border); border-radius: 8px;
+      padding: 9px 11px; font-family: var(--mono); font-size: 0.63rem; max-height: 160px;
+      overflow-y: auto; white-space: pre-wrap; word-break: break-all; line-height: 1.6; margin-top: 6px;
+    }
+    .log-ok { color: var(--ok); } .log-warn { color: var(--warn); }
+    .log-err { color: var(--err); } .log-info { color: #7dd3fc; }
+
+    /* ─── Transcode specifics ─────────────────────────────────── */
+    .cmd-block {
+      background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px; font-family: var(--mono); font-size: 0.78rem; line-height: 1.7;
+      white-space: pre-wrap; word-break: break-all; color: var(--accent-bright);
+      overflow-x: auto;
+    }
+    .explain { display: flex; flex-direction: column; gap: 6px; }
+    .explain-line { display: flex; gap: 8px; font-size: 0.76rem; color: var(--text-sec); }
+    .explain-line code { color: var(--accent); flex-shrink: 0; font-size: 0.72rem; }
+
+    footer {
+      border-top: 1px solid var(--border); padding: 18px 24px; text-align: center;
+      font-family: var(--mono); font-size: 0.66rem; color: var(--text-muted);
+    }
+    footer a { color: var(--text-sec); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<!-- ─── Tool tab strip ───────────────────────────────────────── -->
+<nav class="tool-tabs" id="toolTabs" aria-label="Tools">
+  <button class="tool-tab active" data-tool="pdf">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    PDF → Images
+  </button>
+  <button class="tool-tab" data-tool="ocr">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+    OCR
+  </button>
+  <button class="tool-tab" data-tool="signature">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+    Signature
+  </button>
+  <button class="tool-tab" data-tool="images">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    Image Convert
+  </button>
+  <button class="tool-tab" data-tool="transcode">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+    Transcode
+  </button>
+</nav>
+
+<main>
+
+  <!-- ═══ 1 · PDF → IMAGES ══════════════════════════════════════ -->
+  <section class="tool active" id="tool-pdf">
+    <div class="tool-head">
+      <h1>PDF → Images</h1>
+      <p>Render PDF pages to PNG, JPEG or WebP entirely in your browser — nothing is uploaded. Pick a DPI, a page range, and download pages one by one or as a ZIP.</p>
+    </div>
+    <div class="split">
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">Input & Settings</span><span class="badge" id="pdf-state">Idle</span></div>
+        <div class="panel-body">
+          <div id="pdf-drop" class="drop" tabindex="0" role="button" aria-label="Drop a PDF or click to browse">
+            <div class="d-ico">📄</div>
+            <div class="d-title">Drop PDF here</div>
+            <div class="d-sub">or click to browse</div>
+          </div>
+          <div id="pdf-filechip" class="file-chip hidden">
+            <div class="f-ico">PDF</div>
+            <div class="f-info">
+              <div class="f-name" id="pdf-fname">document.pdf</div>
+              <div class="f-meta" id="pdf-fmeta">0 MB</div>
+            </div>
+            <button class="f-x" id="pdf-clear" title="Remove">✕</button>
+          </div>
+          <input type="file" id="pdf-input" accept="application/pdf" hidden>
+
+          <div class="cg">
+            <span class="cg-label">Format</span>
+            <div class="seg">
+              <input type="radio" name="pdf-fmt" id="pdf-fmt-png" value="image/png" checked><label for="pdf-fmt-png">PNG</label>
+              <input type="radio" name="pdf-fmt" id="pdf-fmt-jpg" value="image/jpeg"><label for="pdf-fmt-jpg">JPEG</label>
+              <input type="radio" name="pdf-fmt" id="pdf-fmt-webp" value="image/webp"><label for="pdf-fmt-webp">WebP</label>
+            </div>
+          </div>
+
+          <div class="cg">
+            <span class="cg-label">Resolution (DPI)</span>
+            <div class="seg" style="margin-bottom:6px">
+              <input type="radio" name="pdf-dpi" id="pdf-dpi-72"><label for="pdf-dpi-72">Screen 72</label>
+              <input type="radio" name="pdf-dpi" id="pdf-dpi-150" checked><label for="pdf-dpi-150">Read 150</label>
+              <input type="radio" name="pdf-dpi" id="pdf-dpi-300"><label for="pdf-dpi-300">Print 300</label>
+            </div>
+            <input type="number" id="pdf-scale" value="150" min="36" max="600" inputmode="numeric">
+          </div>
+
+          <div class="cg">
+            <span class="cg-label">Pages <span class="val" style="text-transform:none">e.g. 1, 3-5 · empty = all</span></span>
+            <input type="text" id="pdf-range" placeholder="All pages">
+          </div>
+
+          <div class="cg hidden" id="pdf-quality-group">
+            <span class="cg-label">Quality <span class="val" id="pdf-quality-val">90%</span></span>
+            <input type="range" id="pdf-quality" value="90" min="10" max="100">
+          </div>
+
+          <div class="cg" id="pdf-bg-group">
+            <span class="cg-label">Background</span>
+            <div class="seg">
+              <input type="radio" name="pdf-bg" id="pdf-bg-trans" value="transparent"><label for="pdf-bg-trans">Transparent</label>
+              <input type="radio" name="pdf-bg" id="pdf-bg-white" value="white" checked><label for="pdf-bg-white">White</label>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button id="pdf-convert" class="btn btn-gold grow" disabled>Convert PDF</button>
+            <button id="pdf-zip" class="btn grow" disabled>Download ZIP</button>
+          </div>
+          <div class="bar"><div id="pdf-bar"></div></div>
+          <div class="status-line" id="pdf-status"></div>
+        </div>
+      </div>
+
+      <div>
+        <div id="pdf-grid" class="result-grid">
+          <div class="empty-state" id="pdf-empty" style="grid-column:1/-1">
+            <h3>No pages yet</h3>
+            <p>Converted pages will appear here.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 2 · OCR ═══════════════════════════════════════════════ -->
+  <section class="tool" id="tool-ocr">
+    <div class="tool-head">
+      <h1>OCR — Text Recognition</h1>
+      <p>Extract text from images with Tesseract, fully offline — the engine and the English, Spanish and Portuguese models ship with this site. Drop, paste (Ctrl+V) or browse.</p>
+    </div>
+    <div class="split-even">
+      <div class="panel relative">
+        <div class="panel-head"><span class="panel-title">Input</span><span class="badge" id="ocr-state">Idle</span></div>
+        <div class="panel-body">
+          <div class="drop" id="ocr-drop" tabindex="0" role="button" aria-label="Drop image or click to upload">
+            <div class="d-ico">🖼️</div>
+            <div class="d-title">Drop image here or click to upload</div>
+            <div class="d-sub">JPG, PNG, WebP · you can also paste (Ctrl+V)</div>
+          </div>
+          <input id="ocr-picker" type="file" accept="image/*" hidden>
+
+          <div class="cg">
+            <span class="cg-label">Language</span>
+            <select id="ocr-lang" title="OCR language">
+              <option value="eng" selected>English</option>
+              <option value="spa">Español</option>
+              <option value="por">Português</option>
+              <option value="eng+spa">English + Español</option>
+              <option value="eng+por">English + Português</option>
+              <option value="spa+por">Español + Português</option>
+            </select>
+          </div>
+
+          <div class="btn-row">
+            <button id="ocr-invert-view" class="btn btn-sm" type="button">Invert view 🌓</button>
+            <button id="ocr-invert" class="btn btn-sm" type="button">Invert for OCR ⚡</button>
+            <button id="ocr-rotate" class="btn btn-sm" type="button">Rotate ⤾</button>
+            <button id="ocr-reset" class="btn btn-sm" type="button">Reset</button>
+          </div>
+          <div class="hint">For white text on a dark background, use <b>Invert for OCR</b>.</div>
+
+          <div class="preview-box">
+            <img id="ocr-preview" alt="Document preview">
+            <div id="ocr-placeholder" class="hint">Upload an image to see a preview.</div>
+          </div>
+
+          <button id="ocr-run" class="btn btn-gold" type="button" disabled>Run OCR</button>
+        </div>
+
+        <div class="overlay" id="ocr-loader">
+          <div class="overlay-card">
+            <div style="font-size:2rem;">⚡</div>
+            <div id="ocr-loadtext" style="margin-top:6px;font-weight:800;">Preparing OCR engine…</div>
+            <div class="bar" style="margin-top:10px"><div id="ocr-bar"></div></div>
+            <div class="hint" style="margin-top:8px;">First run compiles the local WASM engine — everything stays on this device.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">Extracted Text</span>
+          <span class="badge" id="ocr-acc">Accuracy: <span id="ocr-conf">0%</span></span>
+        </div>
+        <div class="panel-body">
+          <div id="ocr-output">Paste an image, drop it, or upload to begin…</div>
+          <div class="btn-row">
+            <button id="ocr-copy" class="btn btn-gold grow" type="button">Copy</button>
+            <button id="ocr-download" class="btn grow" type="button">Download .txt</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 3 · SIGNATURE ═════════════════════════════════════════ -->
+  <section class="tool" id="tool-signature">
+    <div class="tool-head">
+      <h1>Signature Cleanup</h1>
+      <p>Turn a photo or scan of a signature into a clean transparent PNG: automatic Otsu thresholding, speckle removal, tight crop, ink recolor and a manual eraser — pure canvas, no 9&nbsp;MB computer-vision library.</p>
+    </div>
+
+    <div class="drop" id="sig-drop" tabindex="0" role="button" aria-label="Drop signature images">
+      <div class="d-ico">✒️</div>
+      <div class="d-title">Drop signature images here or click to upload</div>
+      <div class="d-sub">JPG, PNG, WebP · multiple files supported</div>
+    </div>
+    <input type="file" id="sig-input" accept="image/*" multiple hidden>
+
+    <div class="sig-gallery" id="sig-gallery" style="margin-top:14px"></div>
+  </section>
+
+  <!-- ═══ 4 · IMAGE CONVERT ═════════════════════════════════════ -->
+  <section class="tool" id="tool-images">
+    <div class="tool-head">
+      <h1>Image Converter</h1>
+      <p>Batch-convert images between PNG, JPEG and WebP with quality control and optional downscaling. Download individually or as a single ZIP.</p>
+    </div>
+    <div class="split">
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">Settings</span><span class="badge" id="img-count">0 files</span></div>
+        <div class="panel-body">
+          <div id="img-drop" class="drop" tabindex="0" role="button" aria-label="Drop images or click to browse">
+            <div class="d-ico">🖼️</div>
+            <div class="d-title">Drop images here</div>
+            <div class="d-sub">or click to browse · multiple files supported</div>
+          </div>
+          <input type="file" id="img-input" accept="image/*" multiple hidden>
+
+          <div class="cg">
+            <span class="cg-label">Output format</span>
+            <div class="seg">
+              <input type="radio" name="img-fmt" id="img-fmt-png" value="image/png"><label for="img-fmt-png">PNG</label>
+              <input type="radio" name="img-fmt" id="img-fmt-jpg" value="image/jpeg"><label for="img-fmt-jpg">JPEG</label>
+              <input type="radio" name="img-fmt" id="img-fmt-webp" value="image/webp" checked><label for="img-fmt-webp">WebP</label>
+            </div>
+          </div>
+
+          <div class="cg" id="img-quality-group">
+            <span class="cg-label">Quality <span class="val" id="img-quality-val">85%</span></span>
+            <input type="range" id="img-quality" value="85" min="10" max="100">
+          </div>
+
+          <div class="cg">
+            <span class="cg-label">Max dimension (px) <span class="val" style="text-transform:none">empty = keep size</span></span>
+            <input type="number" id="img-maxdim" min="16" max="16384" placeholder="e.g. 1920" inputmode="numeric">
+            <div class="hint">Longest side is scaled down to this value; aspect ratio is preserved. Never upscales.</div>
+          </div>
+
+          <div class="btn-row">
+            <button id="img-convert" class="btn btn-gold grow" disabled>Convert All</button>
+            <button id="img-zip" class="btn grow" disabled>Download ZIP</button>
+          </div>
+          <div class="btn-row">
+            <button id="img-clear" class="btn btn-sm btn-danger" disabled>Clear list</button>
+          </div>
+          <div class="status-line" id="img-status"></div>
+        </div>
+      </div>
+
+      <div>
+        <div id="img-grid" class="result-grid">
+          <div class="empty-state" id="img-empty" style="grid-column:1/-1">
+            <h3>No images yet</h3>
+            <p>Added images and conversion results will appear here.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 5 · TRANSCODE ═════════════════════════════════════════ -->
+  <section class="tool" id="tool-transcode">
+    <div class="tool-head">
+      <h1>Transcode</h1>
+      <p>Browsers can't transcode video offline without shipping a ~30&nbsp;MB WASM blob, so this is the honest tool: a precise <code>ffmpeg</code> command builder for video — plus an audio converter that <em>does</em> run right here (any audio your browser can decode → 16-bit PCM WAV).</p>
+    </div>
+    <div class="split-even">
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">Video → ffmpeg command</span></div>
+        <div class="panel-body">
+          <div class="cg">
+            <span class="cg-label">Input file name</span>
+            <input type="text" id="tc-input" value="input.mkv" spellcheck="false">
+          </div>
+          <div class="cg">
+            <span class="cg-label">Target codec</span>
+            <div class="seg">
+              <input type="radio" name="tc-codec" id="tc-h264" value="h264" checked><label for="tc-h264">H.264</label>
+              <input type="radio" name="tc-codec" id="tc-hevc" value="hevc"><label for="tc-hevc">H.265</label>
+              <input type="radio" name="tc-codec" id="tc-av1" value="av1"><label for="tc-av1">AV1</label>
+              <input type="radio" name="tc-codec" id="tc-vp9" value="vp9"><label for="tc-vp9">VP9</label>
+            </div>
+          </div>
+          <div class="cg">
+            <span class="cg-label">Hardware encoder</span>
+            <select id="tc-gpu">
+              <option value="none" selected>None — software (best quality/size)</option>
+              <option value="nvidia">NVIDIA (NVENC)</option>
+              <option value="intel">Intel (QSV)</option>
+              <option value="amd">AMD (AMF)</option>
+            </select>
+          </div>
+          <div class="cg">
+            <span class="cg-label">Quality (CRF) <span class="val" id="tc-crf-val">23</span></span>
+            <input type="range" id="tc-crf" min="0" max="51" value="23">
+            <div class="hint">Lower = better quality, bigger file. <b>18–28</b> is the sane range for H.264/H.265; VP9/AV1 use ~<b>30</b>.</div>
+          </div>
+          <div class="cg">
+            <span class="cg-label">Resolution</span>
+            <div class="seg">
+              <input type="radio" name="tc-res" id="tc-res-orig" value="original" checked><label for="tc-res-orig">Original</label>
+              <input type="radio" name="tc-res" id="tc-res-1080" value="1080"><label for="tc-res-1080">1080p</label>
+              <input type="radio" name="tc-res" id="tc-res-720" value="720"><label for="tc-res-720">720p</label>
+              <input type="radio" name="tc-res" id="tc-res-480" value="480"><label for="tc-res-480">480p</label>
+            </div>
+          </div>
+          <div class="cg">
+            <span class="cg-label">Audio</span>
+            <select id="tc-audio">
+              <option value="copy" selected>Copy (no re-encode)</option>
+              <option value="opus">Opus 128k (stereo)</option>
+              <option value="aac">AAC 192k</option>
+              <option value="none">Strip audio</option>
+            </select>
+          </div>
+          <div class="cg">
+            <span class="cg-label">Subtitles</span>
+            <select id="tc-subs">
+              <option value="copy" selected>Copy / convert to container format</option>
+              <option value="none">Strip subtitles</option>
+            </select>
+          </div>
+          <div class="tgl-row">
+            <div>
+              <div class="tgl-lbl">Two-pass encode</div>
+              <div class="tgl-sub">VP9/AV1 software only — better bit allocation</div>
+            </div>
+            <label class="pill"><input type="checkbox" id="tc-twopass"><span class="tr"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="panel">
+          <div class="panel-head">
+            <span class="panel-title">Generated command</span>
+            <button id="tc-copy" class="btn btn-sm">Copy</button>
+          </div>
+          <div class="panel-body">
+            <div class="cmd-block" id="tc-cmd"></div>
+            <div class="explain" id="tc-explain"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Audio → WAV (runs in-browser)</span><span class="badge" id="wav-state">Idle</span></div>
+          <div class="panel-body">
+            <div id="wav-drop" class="drop" tabindex="0" role="button" aria-label="Drop an audio file">
+              <div class="d-ico">🎵</div>
+              <div class="d-title">Drop audio here</div>
+              <div class="d-sub">MP3, M4A/AAC, OGG, FLAC, WebM… anything your browser can decode</div>
+            </div>
+            <input type="file" id="wav-input" accept="audio/*,video/*" hidden>
+            <div id="wav-info" class="hint"></div>
+            <div class="tgl-row">
+              <div>
+                <div class="tgl-lbl">Downmix to mono</div>
+                <div class="tgl-sub">Smaller file, single channel</div>
+              </div>
+              <label class="pill"><input type="checkbox" id="wav-mono"><span class="tr"></span></label>
+            </div>
+            <button id="wav-export" class="btn btn-gold" disabled>Export 16-bit WAV</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  media.carino.systems — every tool runs entirely in your browser; no file ever leaves this device.
+  <a href="https://github.com/MiguelCarino" target="_blank" rel="noopener">MiguelCarino</a>
+</footer>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════════
+   Shared helpers: tabs, downloads, store-only ZIP writer
+   ════════════════════════════════════════════════════════════════ */
+
+const $ = (id) => document.getElementById(id);
+const fmtBytes = (n) => n < 1024 ? n + ' B' : n < 1048576 ? (n/1024).toFixed(1) + ' KB' : (n/1048576).toFixed(2) + ' MB';
+
+/* ─── tabs + hash routing ─── */
+const TOOLS = ['pdf','ocr','signature','images','transcode'];
+function showTool(name){
+  if(!TOOLS.includes(name)) name = 'pdf';
+  document.querySelectorAll('.tool-tab').forEach(b => b.classList.toggle('active', b.dataset.tool === name));
+  TOOLS.forEach(t => $('tool-' + t).classList.toggle('active', t === name));
+  if(location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+}
+document.querySelectorAll('.tool-tab').forEach(b => b.addEventListener('click', () => showTool(b.dataset.tool)));
+window.addEventListener('hashchange', () => showTool(location.hash.slice(1)));
+showTool(location.hash.slice(1) || 'pdf');
+
+/* ─── download helper (replaces file-saver) ─── */
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/* ─── store-only ZIP writer (replaces JSZip) ───
+   Local file headers + central directory + EOCD, CRC-32, no compression. */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for(let n = 0; n < 256; n++){
+    let c = n;
+    for(let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c;
+  }
+  return t;
+})();
+function crc32(buf){
+  let c = 0xFFFFFFFF;
+  for(let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+async function makeZip(entries){ // entries: [{name, blob}]
+  const enc = new TextEncoder();
+  const now = new Date();
+  const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xFFFF;
+  const dosDate = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+  const parts = [], centrals = [];
+  let offset = 0;
+  for(const e of entries){
+    const data = new Uint8Array(await e.blob.arrayBuffer());
+    const name = enc.encode(e.name);
+    const crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true);            // local file header signature
+    lh.setUint16(4, 20, true);                    // version needed
+    lh.setUint16(6, 0x0800, true);                // flags: UTF-8 names
+    lh.setUint16(8, 0, true);                     // method: store
+    lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true);
+    lh.setUint32(14, crc, true);
+    lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+    lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(lh.buffer, name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true);            // central directory signature
+    ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+    ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true);
+    ch.setUint32(16, crc, true);
+    ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true);
+    ch.setUint16(28, name.length, true);          // extra/comment/disk/attrs stay 0
+    ch.setUint32(42, offset, true);               // local header offset
+    centrals.push([ch.buffer, name]);
+    offset += 30 + name.length + data.length;
+  }
+  let cdSize = 0;
+  for(const [h, n] of centrals){ parts.push(h, n); cdSize += 46 + n.length; }
+  const eocd = new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0, 0x06054b50, true);
+  eocd.setUint16(8, centrals.length, true); eocd.setUint16(10, centrals.length, true);
+  eocd.setUint32(12, cdSize, true); eocd.setUint32(16, offset, true);
+  parts.push(eocd.buffer);
+  return new Blob(parts, { type: 'application/zip' });
+}
+
+/* ─── generic dropzone wiring ─── */
+function wireDrop(dropEl, inputEl, onFiles, { multiple = false } = {}){
+  dropEl.addEventListener('click', () => inputEl.click());
+  dropEl.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputEl.click(); } });
+  ['dragenter','dragover'].forEach(ev => dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev => dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.remove('dragover'); }));
+  dropEl.addEventListener('drop', e => {
+    const fs = e.dataTransfer && e.dataTransfer.files;
+    if(fs && fs.length) onFiles(multiple ? Array.from(fs) : [fs[0]]);
+  });
+  inputEl.addEventListener('change', e => {
+    const fs = e.target.files;
+    if(fs && fs.length) onFiles(multiple ? Array.from(fs) : [fs[0]]);
+    e.target.value = '';
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════
+   1 · PDF → IMAGES  (vendored pdf.js, loaded on demand as a module)
+   ════════════════════════════════════════════════════════════════ */
+const PdfTool = (() => {
+  let pdfjsLib = null;
+  let pdfBytes = null, pdfName = 'document', results = [];
+
+  const drop = $('pdf-drop'), input = $('pdf-input'), chip = $('pdf-filechip');
+  const grid = $('pdf-grid'), empty = $('pdf-empty');
+  const btnConvert = $('pdf-convert'), btnZip = $('pdf-zip');
+  const bar = $('pdf-bar'), statusEl = $('pdf-status'), stateEl = $('pdf-state');
+
+  async function lib(){
+    if(pdfjsLib) return pdfjsLib;
+    statusEl.textContent = 'Loading PDF engine…';
+    pdfjsLib = await import(new URL('vendor/pdfjs/pdf.min.mjs', location.href).href);
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('vendor/pdfjs/pdf.worker.min.mjs', location.href).href;
+    statusEl.textContent = '';
+    return pdfjsLib;
+  }
+
+  const getFmt = () => document.querySelector('input[name="pdf-fmt"]:checked').value;
+  const getBg  = () => document.querySelector('input[name="pdf-bg"]:checked').value;
+
+  document.querySelectorAll('input[name="pdf-fmt"]').forEach(r => r.addEventListener('change', () => {
+    const f = getFmt();
+    $('pdf-quality-group').classList.toggle('hidden', f === 'image/png');
+    const alpha = f !== 'image/jpeg';
+    $('pdf-bg-group').style.opacity = alpha ? '1' : '0.45';
+    $('pdf-bg-group').style.pointerEvents = alpha ? 'auto' : 'none';
+    if(!alpha) $('pdf-bg-white').checked = true;
+  }));
+  $('pdf-quality').addEventListener('input', () => $('pdf-quality-val').textContent = $('pdf-quality').value + '%');
+  [['pdf-dpi-72',72],['pdf-dpi-150',150],['pdf-dpi-300',300]].forEach(([id,v]) =>
+    $(id).addEventListener('change', () => $('pdf-scale').value = v));
+
+  function resetResults(){
+    results = [];
+    grid.querySelectorAll('.rcard').forEach(c => c.remove());
+    empty.classList.remove('hidden');
+    btnZip.disabled = true;
+    btnZip.textContent = 'Download ZIP';
+  }
+
+  async function handleFile(file){
+    if(!file || (file.type && file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf'))) return;
+    $('pdf-fname').textContent = file.name;
+    $('pdf-fmeta').textContent = fmtBytes(file.size);
+    drop.classList.add('hidden');
+    chip.classList.remove('hidden');
+    pdfBytes = new Uint8Array(await file.arrayBuffer());
+    pdfName = file.name.replace(/\.[^.]+$/, '');
+    btnConvert.disabled = false;
+    stateEl.textContent = 'Loaded';
+    statusEl.textContent = 'PDF loaded — ready to convert.';
+    resetResults();
+  }
+
+  wireDrop(drop, input, files => handleFile(files[0]));
+
+  $('pdf-clear').addEventListener('click', () => {
+    pdfBytes = null;
+    drop.classList.remove('hidden');
+    chip.classList.add('hidden');
+    btnConvert.disabled = true;
+    stateEl.textContent = 'Idle';
+    statusEl.textContent = '';
+    bar.style.width = '0%';
+    resetResults();
+  });
+
+  function parseRange(str, total){
+    if(!str.trim()) return Array.from({length: total}, (_, i) => i + 1);
+    const out = new Set();
+    str.split(',').forEach(chunk => {
+      chunk = chunk.trim();
+      if(!chunk) return;
+      if(chunk.includes('-')){
+        const [a, b] = chunk.split('-').map(n => parseInt(n, 10));
+        if(isNaN(a) || isNaN(b)) return;
+        for(let i = Math.max(1, Math.min(a, b)); i <= Math.min(total, Math.max(a, b)); i++) out.add(i);
+      } else {
+        const n = parseInt(chunk, 10);
+        if(n >= 1 && n <= total) out.add(n);
+      }
+    });
+    return Array.from(out).sort((a, b) => a - b);
+  }
+
+  function addCard(num, url, blob, ext, w, h){
+    const div = document.createElement('div');
+    div.className = 'rcard';
+    div.innerHTML = `
+      <div class="thumb"><img alt="Page ${num}"></div>
+      <div class="rbody">
+        <div class="rmeta"><span class="chip">Page ${num}</span><span>${w}×${h} · ${fmtBytes(blob.size)}</span></div>
+        <button class="btn btn-sm">Download</button>
+      </div>`;
+    div.querySelector('img').src = url;
+    div.querySelector('button').addEventListener('click', () => downloadBlob(blob, `${pdfName}-page${num}.${ext}`));
+    grid.appendChild(div);
+  }
+
+  btnConvert.addEventListener('click', async () => {
+    if(!pdfBytes) return;
+    btnConvert.disabled = true; btnZip.disabled = true;
+    resetResults();
+    empty.classList.add('hidden');
+    bar.style.width = '0%';
+    stateEl.textContent = 'Working';
+    try {
+      const p = await lib();
+      const pdf = await p.getDocument({ data: pdfBytes.slice() }).promise;
+      const pages = parseRange($('pdf-range').value, pdf.numPages);
+      if(!pages.length) throw new Error('No valid pages selected');
+      const format = getFmt(), bg = getBg();
+      const dpi = Math.min(600, Math.max(36, parseInt($('pdf-scale').value, 10) || 150));
+      const quality = (parseInt($('pdf-quality').value, 10) || 90) / 100;
+      let done = 0;
+      for(const num of pages){
+        statusEl.textContent = `Rendering page ${num} / ${pdf.numPages}…`;
+        const page = await pdf.getPage(num);
+        const viewport = page.getViewport({ scale: dpi / 72 });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const ctx = canvas.getContext('2d');
+        if(bg === 'white' || format === 'image/jpeg'){
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        const blob = await new Promise(r => canvas.toBlob(r, format, quality));
+        const ext = format.split('/')[1];
+        addCard(num, canvas.toDataURL(format, quality), blob, ext, canvas.width, canvas.height);
+        results.push({ num, blob, ext });
+        done++;
+        bar.style.width = (done / pages.length * 100) + '%';
+        await new Promise(r => setTimeout(r, 0));
+      }
+      statusEl.textContent = `Done — ${results.length} page(s) converted.`;
+      stateEl.textContent = 'Done';
+      btnZip.disabled = false;
+      btnZip.textContent = `Download ZIP (${results.length})`;
+    } catch(e){
+      console.error(e);
+      statusEl.textContent = 'Error: ' + e.message;
+      stateEl.textContent = 'Error';
+    } finally {
+      btnConvert.disabled = false;
+    }
+  });
+
+  btnZip.addEventListener('click', async () => {
+    if(!results.length) return;
+    btnZip.disabled = true;
+    statusEl.textContent = 'Building ZIP…';
+    const zip = await makeZip(results.map(({num, blob, ext}) => ({
+      name: `${pdfName}-page${String(num).padStart(3, '0')}.${ext}`, blob
+    })));
+    downloadBlob(zip, `${pdfName}-images.zip`);
+    statusEl.textContent = `ZIP ready (${fmtBytes(zip.size)}).`;
+    btnZip.disabled = false;
+  });
+
+  return { parseRange };
+})();
+
+/* ════════════════════════════════════════════════════════════════
+   2 · OCR  (vendored tesseract.js, fully offline)
+   ════════════════════════════════════════════════════════════════ */
+const OcrTool = (() => {
+  const VENDOR = new URL('vendor/tesseract/', location.href).href;
+  const TESS_OPTS = {
+    workerPath: VENDOR + 'worker.min.js',
+    corePath:   VENDOR,                                     // worker appends tesseract-core-*[-lstm].wasm.js
+    langPath:   new URL('vendor/tessdata', location.href).href, // worker fetches <langPath>/<lang>.traineddata.gz
+    workerBlobURL: false,
+  };
+
+  let worker = null, engineLoaded = false;
+  let currentFile = null, activeURL = null;
+  let invertForOCR = false, rotation = 0;
+  let jobId = 0, busy = false, lastLang = 'eng';
+
+  const preview = $('ocr-preview'), placeholder = $('ocr-placeholder');
+  const output = $('ocr-output'), loader = $('ocr-loader'), loadText = $('ocr-loadtext'), bar = $('ocr-bar');
+  const stateEl = $('ocr-state'), accEl = $('ocr-acc'), confEl = $('ocr-conf');
+  const runBtn = $('ocr-run'), langSel = $('ocr-lang');
+
+  const setState = t => stateEl.textContent = t;
+  function setBusy(v){
+    busy = v;
+    const dis = v || !currentFile;
+    runBtn.disabled = dis;
+    ['ocr-invert','ocr-rotate','ocr-invert-view'].forEach(id => $(id).disabled = dis);
+    langSel.disabled = v;
+  }
+  function setLoader(show){
+    loader.style.display = show ? 'flex' : 'none';
+    if(!show){ loadText.textContent = 'Preparing OCR engine…'; bar.style.width = '0%'; }
+  }
+  function setConfidence(pct){
+    const p = Math.max(0, Math.min(100, pct | 0));
+    confEl.textContent = p + '%';
+    accEl.classList.remove('low','med','high');
+    accEl.classList.add(p < 55 ? 'low' : p < 80 ? 'med' : 'high');
+  }
+  function cleanupURL(){ if(activeURL){ URL.revokeObjectURL(activeURL); activeURL = null; } }
+
+  function resetUI(){
+    jobId++;
+    cleanupURL();
+    currentFile = null; invertForOCR = false; rotation = 0;
+    output.textContent = 'Paste an image, drop it, or upload to begin…';
+    setConfidence(0); setState('Idle');
+    preview.style.display = 'none';
+    preview.classList.remove('inverted');
+    placeholder.style.display = 'block';
+    $('ocr-invert').textContent = 'Invert for OCR ⚡';
+    $('ocr-rotate').textContent = 'Rotate ⤾';
+    setBusy(false);
+  }
+
+  function loadFile(file){
+    if(!file || !file.type || !file.type.startsWith('image/')) return;
+    currentFile = file;
+    cleanupURL();
+    activeURL = URL.createObjectURL(file);
+    preview.src = activeURL;
+    preview.style.display = 'block';
+    placeholder.style.display = 'none';
+    output.textContent = '';
+    setConfidence(0); setState('Ready'); setBusy(false);
+    runBtn.disabled = false;
+  }
+
+  async function ensureWorker(){
+    if(worker) return worker;
+    setLoader(true); setBusy(true);
+    setState(engineLoaded ? 'Switching language' : 'Loading engine');
+    worker = await Tesseract.createWorker(langSel.value, 1, Object.assign({
+      logger: m => {
+        if(m.status === 'recognizing text'){
+          const pct = Math.round((m.progress || 0) * 100);
+          loadText.textContent = `Recognizing… ${pct}%`;
+          bar.style.width = pct + '%';
+        } else if(m.status){
+          loadText.textContent = m.status;
+        }
+      }
+    }, TESS_OPTS));
+    engineLoaded = true;
+    setLoader(false); setBusy(false);
+    setState(currentFile ? 'Ready' : 'Idle');
+    return worker;
+  }
+
+  langSel.addEventListener('change', async () => {
+    if(langSel.value === lastLang) return;
+    lastLang = langSel.value;
+    if(worker){
+      setBusy(true);
+      try { await worker.terminate(); } catch(_){}
+      worker = null;
+      setBusy(false);
+      setState(currentFile ? 'Ready' : 'Idle');
+    }
+  });
+
+  function preprocess(file){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth, h = img.naturalHeight;
+          const rot = ((rotation % 360) + 360) % 360;
+          const swap = rot === 90 || rot === 270;
+          const canvas = document.createElement('canvas');
+          canvas.width = swap ? h : w;
+          canvas.height = swap ? w : h;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate(rot * Math.PI / 180);
+          ctx.drawImage(img, -w / 2, -h / 2);
+          ctx.restore();
+          if(invertForOCR){
+            const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const p = d.data;
+            for(let i = 0; i < p.length; i += 4){ p[i] = 255 - p[i]; p[i+1] = 255 - p[i+1]; p[i+2] = 255 - p[i+2]; }
+            ctx.putImageData(d, 0, 0);
+          }
+          canvas.toBlob(blob => {
+            URL.revokeObjectURL(url);
+            blob ? resolve(blob) : reject(new Error('Failed to preprocess image.'));
+          }, 'image/png', 1.0);
+        } catch(err){ URL.revokeObjectURL(url); reject(err); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not load image.')); };
+      img.src = url;
+    });
+  }
+
+  async function runOCR(){
+    if(!currentFile || busy) return;
+    const myJob = ++jobId;
+    setBusy(true); setLoader(true); setState('Running OCR');
+    output.textContent = '';
+    setConfidence(0);
+    try {
+      const w = await ensureWorker();
+      const blob = await preprocess(currentFile);
+      if(myJob !== jobId) return;
+      const { data } = await w.recognize(blob);
+      if(myJob !== jobId) return;
+      const text = (data && data.text || '').trim();
+      output.textContent = text || 'No text found in this image.';
+      setConfidence(Math.round(data && data.confidence || 0));
+      setState('Done');
+    } catch(err){
+      output.textContent = 'Error: ' + (err && err.message || String(err));
+      setState('Error');
+    } finally {
+      if(myJob === jobId){ setLoader(false); setBusy(false); }
+    }
+  }
+
+  wireDrop($('ocr-drop'), $('ocr-picker'), files => loadFile(files[0]));
+  $('ocr-invert-view').addEventListener('click', () => { if(currentFile) preview.classList.toggle('inverted'); });
+  $('ocr-invert').addEventListener('click', () => {
+    if(!currentFile) return;
+    invertForOCR = !invertForOCR;
+    $('ocr-invert').textContent = invertForOCR ? 'Invert for OCR ✅' : 'Invert for OCR ⚡';
+  });
+  $('ocr-rotate').addEventListener('click', () => {
+    if(!currentFile) return;
+    rotation = (rotation + 90) % 360;
+    $('ocr-rotate').textContent = rotation ? `Rotate ⤾ (${rotation}°)` : 'Rotate ⤾';
+  });
+  runBtn.addEventListener('click', runOCR);
+  $('ocr-reset').addEventListener('click', resetUI);
+
+  $('ocr-copy').addEventListener('click', async () => {
+    const text = output.textContent || '';
+    if(!text.trim()) return;
+    const btn = $('ocr-copy'), original = btn.textContent;
+    try {
+      if(navigator.clipboard && window.isSecureContext){
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      btn.textContent = 'Copied ✅';
+    } catch(_){ btn.textContent = 'Copy failed ❌'; }
+    setTimeout(() => btn.textContent = original, 1200);
+  });
+
+  $('ocr-download').addEventListener('click', () => {
+    downloadBlob(new Blob([output.textContent || ''], { type: 'text/plain;charset=utf-8' }), 'ocr.txt');
+  });
+
+  window.addEventListener('paste', e => {
+    if(!$('tool-ocr').classList.contains('active')) return;
+    const f = e.clipboardData && e.clipboardData.files && e.clipboardData.files[0];
+    if(f) loadFile(f);
+  });
+  window.addEventListener('beforeunload', () => {
+    cleanupURL();
+    try { if(worker) worker.terminate(); } catch(_){}
+  });
+
+  resetUI();
+  return { TESS_OPTS };
+})();
+</script>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════════
+   3 · SIGNATURE CLEANUP  (pure canvas pipeline — no OpenCV)
+   grayscale → Otsu threshold (manual override) → transparent bg →
+   despeckle (connected components) → auto-crop → recolor → PNG
+   ════════════════════════════════════════════════════════════════ */
+const SigTool = (() => {
+  const gallery = $('sig-gallery');
+
+  /* ---- core pipeline (also exposed for testing) ---- */
+  function otsu(hist, total){
+    let sum = 0;
+    for(let i = 0; i < 256; i++) sum += i * hist[i];
+    let sumB = 0, wB = 0, maxVar = -1, threshold = 127;
+    for(let t = 0; t < 256; t++){
+      wB += hist[t];
+      if(wB === 0) continue;
+      const wF = total - wB;
+      if(wF === 0) break;
+      sumB += t * hist[t];
+      const mB = sumB / wB, mF = (sum - sumB) / wF;
+      const between = wB * wF * (mB - mF) * (mB - mF);
+      if(between > maxVar){ maxVar = between; threshold = t; }
+    }
+    return threshold;
+  }
+
+  /* despeckle: 4-connected flood fill over the ink mask, drop small blobs */
+  function despeckle(mask, w, h, minSize){
+    const visited = new Uint8Array(mask.length);
+    const stack = new Int32Array(mask.length);
+    let kept = 0, dropped = 0;
+    const component = new Int32Array(mask.length);
+    for(let start = 0; start < mask.length; start++){
+      if(!mask[start] || visited[start]) continue;
+      let sp = 0, count = 0;
+      stack[sp++] = start; visited[start] = 1;
+      while(sp > 0){
+        const i = stack[--sp];
+        component[count++] = i;
+        const x = i % w, y = (i / w) | 0;
+        if(x > 0     && mask[i-1] && !visited[i-1]){ visited[i-1] = 1; stack[sp++] = i-1; }
+        if(x < w - 1 && mask[i+1] && !visited[i+1]){ visited[i+1] = 1; stack[sp++] = i+1; }
+        if(y > 0     && mask[i-w] && !visited[i-w]){ visited[i-w] = 1; stack[sp++] = i-w; }
+        if(y < h - 1 && mask[i+w] && !visited[i+w]){ visited[i+w] = 1; stack[sp++] = i+w; }
+      }
+      if(count < minSize){
+        for(let k = 0; k < count; k++) mask[component[k]] = 0;
+        dropped++;
+      } else kept++;
+    }
+    return { kept, dropped };
+  }
+
+  /**
+   * @param {HTMLImageElement|HTMLCanvasElement} img
+   * @param {object} opts {autoThreshold, threshold, invert, minBlob, pad, softEdges, inkColor:[r,g,b]}
+   * @returns {canvas, stats, steps:[{label,canvas}]}
+   */
+  function processSignature(img, opts){
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    const steps = [], stats = {};
+    const snap = (label, canvas) => steps.push({ label, canvas });
+
+    const src = document.createElement('canvas');
+    src.width = w; src.height = h;
+    const sctx = src.getContext('2d', { willReadFrequently: true });
+    sctx.drawImage(img, 0, 0);
+    snap('0 · source', src);
+    stats.in = `${w}×${h}`;
+
+    const imgData = sctx.getImageData(0, 0, w, h);
+    const px = imgData.data;
+
+    // 1 · grayscale (Rec.601 luma) + histogram
+    const gray = new Uint8Array(w * h);
+    const hist = new Uint32Array(256);
+    for(let i = 0, j = 0; i < px.length; i += 4, j++){
+      const g = (px[i] * 0.299 + px[i+1] * 0.587 + px[i+2] * 0.114) | 0;
+      gray[j] = g;
+      hist[g]++;
+    }
+    if(opts.invert){ // light ink on dark paper → flip so ink is always "dark"
+      for(let j = 0; j < gray.length; j++) gray[j] = 255 - gray[j];
+      hist.fill(0);
+      for(let j = 0; j < gray.length; j++) hist[gray[j]]++;
+    }
+    {
+      const gc = document.createElement('canvas');
+      gc.width = w; gc.height = h;
+      const gctx = gc.getContext('2d');
+      const gd = gctx.createImageData(w, h);
+      for(let j = 0; j < gray.length; j++){ const o = j * 4; gd.data[o] = gd.data[o+1] = gd.data[o+2] = gray[j]; gd.data[o+3] = 255; }
+      gctx.putImageData(gd, 0, 0);
+      snap('1 · gray', gc);
+    }
+
+    // 2 · threshold (Otsu auto or manual)
+    const thr = opts.autoThreshold ? otsu(hist, w * h) : opts.threshold;
+    stats.threshold = thr + (opts.autoThreshold ? ' (auto)' : ' (manual)');
+
+    // 3 · ink mask + soft alpha
+    const soft = opts.softEdges ? 24 : 1; // gray levels of edge feathering
+    const mask = new Uint8Array(w * h);
+    const alpha = new Uint8Array(w * h);
+    let inkCount = 0;
+    for(let j = 0; j < gray.length; j++){
+      const a = Math.max(0, Math.min(255, Math.round((thr - gray[j]) * 255 / soft)));
+      alpha[j] = a;
+      if(a > 0){ mask[j] = 1; inkCount++; }
+    }
+    stats.inkPct = ((inkCount / (w * h)) * 100).toFixed(1) + '%';
+    {
+      const bc = document.createElement('canvas');
+      bc.width = w; bc.height = h;
+      const bctx = bc.getContext('2d');
+      const bd = bctx.createImageData(w, h);
+      for(let j = 0; j < mask.length; j++){ const o = j * 4; const v = mask[j] ? 0 : 255; bd.data[o] = bd.data[o+1] = bd.data[o+2] = v; bd.data[o+3] = 255; }
+      bctx.putImageData(bd, 0, 0);
+      snap(`2 · binary thr=${thr}`, bc);
+    }
+
+    // 4 · despeckle
+    const { kept, dropped } = despeckle(mask, w, h, Math.max(1, opts.minBlob));
+    stats.blobs = `${kept} kept / ${dropped} dropped`;
+    for(let j = 0; j < mask.length; j++) if(!mask[j]) alpha[j] = 0;
+    {
+      const dc = document.createElement('canvas');
+      dc.width = w; dc.height = h;
+      const dctx = dc.getContext('2d');
+      const dd = dctx.createImageData(w, h);
+      for(let j = 0; j < mask.length; j++){ const o = j * 4; const v = mask[j] ? 0 : 255; dd.data[o] = dd.data[o+1] = dd.data[o+2] = v; dd.data[o+3] = 255; }
+      dctx.putImageData(dd, 0, 0);
+      snap('3 · despeckled', dc);
+    }
+
+    // 5 · crop bounds
+    let minX = w, minY = h, maxX = -1, maxY = -1;
+    for(let y = 0; y < h; y++){
+      const row = y * w;
+      for(let x = 0; x < w; x++){
+        if(mask[row + x]){
+          if(x < minX) minX = x;
+          if(x > maxX) maxX = x;
+          if(y < minY) minY = y;
+          if(y > maxY) maxY = y;
+        }
+      }
+    }
+    let cx = 0, cy = 0, cw = w, ch = h;
+    if(maxX >= minX){
+      const pad = Math.max(0, opts.pad);
+      cx = Math.max(0, minX - pad);
+      cy = Math.max(0, minY - pad);
+      cw = Math.min(w, maxX + 1 + pad) - cx;
+      ch = Math.min(h, maxY + 1 + pad) - cy;
+    } else {
+      stats.warning = 'no ink detected';
+    }
+    stats.out = `${cw}×${ch}`;
+
+    // 6 · composite RGBA output (cropped, recolored, transparent bg)
+    const [ir, ig, ib] = opts.inkColor;
+    const out = document.createElement('canvas');
+    out.width = cw; out.height = ch;
+    const octx = out.getContext('2d');
+    const od = octx.createImageData(cw, ch);
+    const op = od.data;
+    for(let y = 0; y < ch; y++){
+      const srcRow = (y + cy) * w + cx;
+      const dstRow = y * cw;
+      for(let x = 0; x < cw; x++){
+        const a = alpha[srcRow + x];
+        const o = (dstRow + x) * 4;
+        op[o] = ir; op[o+1] = ig; op[o+2] = ib; op[o+3] = a;
+      }
+    }
+    octx.putImageData(od, 0, 0);
+    snap('4 · result', out);
+    return { canvas: out, stats, steps, threshold: thr };
+  }
+
+  /* ---- UI ---- */
+  function hexToRgb(hex){
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+    const n = m ? parseInt(m[1], 16) : 0;
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  function pipeStep(label, canvas, dlName, targetW = 130){
+    const wrap = document.createElement('div');
+    wrap.className = 'pipe-step';
+    const lbl = document.createElement('span');
+    lbl.className = 'pipe-lbl'; lbl.textContent = label;
+    const c = document.createElement('canvas');
+    const scale = targetW / canvas.width;
+    c.width = targetW; c.height = Math.max(1, Math.round(canvas.height * scale));
+    c.getContext('2d').drawImage(canvas, 0, 0, c.width, c.height);
+    const dl = document.createElement('button');
+    dl.className = 'pipe-dl'; dl.textContent = '↓ save';
+    dl.onclick = () => canvas.toBlob(b => downloadBlob(b, `debug_${dlName}.png`), 'image/png');
+    wrap.append(lbl, c, dl);
+    return wrap;
+  }
+
+  function downloadCanvas(canvas, scale, filename){
+    scale = parseInt(scale, 10) || 1;
+    let src = canvas;
+    if(scale !== 1){
+      const out = document.createElement('canvas');
+      out.width = canvas.width * scale;
+      out.height = canvas.height * scale;
+      const ctx = out.getContext('2d');
+      ctx.imageSmoothingEnabled = false; // nearest-neighbour keeps ink crisp
+      ctx.drawImage(canvas, 0, 0, out.width, out.height);
+      src = out;
+    }
+    src.toBlob(b => downloadBlob(b, filename), 'image/png');
+  }
+
+  function eraserCursorCSS(r){
+    r = Math.max(4, r);
+    const d = r * 2;
+    const svg = encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${d}" height="${d}">` +
+      `<circle cx="${r}" cy="${r}" r="${r-2}" fill="none" stroke="rgba(0,0,0,0.8)" stroke-width="1.5"/>` +
+      `<circle cx="${r}" cy="${r}" r="${r-2}" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.7"/>` +
+      `</svg>`);
+    return `url("data:image/svg+xml,${svg}") ${r} ${r}, crosshair`;
+  }
+
+  function setupEraser(canvas, wrapper, sizeSlider, toggleBtn, undoBtn){
+    if(canvas._eraserAbort) canvas._eraserAbort.abort();
+    const ac = new AbortController();
+    canvas._eraserAbort = ac;
+    const sig = { signal: ac.signal };
+    let active = false, drawing = false, lastX = 0, lastY = 0;
+    const undoStack = [];
+
+    let cursorEl = wrapper.querySelector('.eraser-cursor');
+    if(!cursorEl){
+      cursorEl = document.createElement('div');
+      cursorEl.className = 'eraser-cursor';
+      wrapper.appendChild(cursorEl);
+    }
+    const updateCursorSize = () => {
+      const r = parseInt(sizeSlider.value, 10);
+      cursorEl.style.width = r * 2 + 'px';
+      cursorEl.style.height = r * 2 + 'px';
+      if(active) canvas.style.cursor = eraserCursorCSS(r);
+    };
+    updateCursorSize();
+    sizeSlider.addEventListener('input', updateCursorSize, sig);
+
+    const getPos = e => {
+      const rect = canvas.getBoundingClientRect();
+      const cxp = e.touches ? e.touches[0].clientX : e.clientX;
+      const cyp = e.touches ? e.touches[0].clientY : e.clientY;
+      const wr = wrapper.getBoundingClientRect();
+      return {
+        x: (cxp - rect.left) * (canvas.width / rect.width),
+        y: (cyp - rect.top) * (canvas.height / rect.height),
+        px: cxp - wr.left, py: cyp - wr.top,
+      };
+    };
+    const saveState = () => {
+      const ctx = canvas.getContext('2d');
+      undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+      if(undoStack.length > 20) undoStack.shift();
+    };
+    const erase = (x, y) => {
+      const rect = canvas.getBoundingClientRect();
+      const r = parseInt(sizeSlider.value, 10) * (canvas.width / rect.width);
+      const ctx = canvas.getContext('2d');
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(x, y);
+      ctx.lineWidth = r * 2;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      ctx.restore();
+      lastX = x; lastY = y;
+    };
+
+    canvas.addEventListener('mousedown', e => {
+      if(!active) return; e.preventDefault();
+      saveState(); drawing = true;
+      const p = getPos(e); lastX = p.x; lastY = p.y; erase(p.x, p.y);
+    }, sig);
+    canvas.addEventListener('mousemove', e => {
+      if(!active) return;
+      const p = getPos(e);
+      cursorEl.style.left = p.px + 'px';
+      cursorEl.style.top = p.py + 'px';
+      if(drawing) erase(p.x, p.y);
+    }, sig);
+    canvas.addEventListener('mouseup', () => { drawing = false; }, sig);
+    canvas.addEventListener('mouseleave', () => { drawing = false; cursorEl.style.display = 'none'; }, sig);
+    canvas.addEventListener('mouseenter', () => { if(active) cursorEl.style.display = 'block'; }, sig);
+    canvas.addEventListener('touchstart', e => {
+      if(!active) return; e.preventDefault();
+      saveState(); drawing = true;
+      const p = getPos(e); lastX = p.x; lastY = p.y; erase(p.x, p.y);
+    }, { passive: false, signal: ac.signal });
+    canvas.addEventListener('touchmove', e => {
+      if(!active || !drawing) return; e.preventDefault();
+      const p = getPos(e); erase(p.x, p.y);
+    }, { passive: false, signal: ac.signal });
+    canvas.addEventListener('touchend', () => { drawing = false; }, sig);
+
+    toggleBtn.onclick = () => {
+      active = !active;
+      if(active){
+        toggleBtn.textContent = '✕ Stop erasing';
+        toggleBtn.classList.add('btn-danger');
+        updateCursorSize();
+        cursorEl.style.display = 'block';
+      } else {
+        toggleBtn.textContent = '✎ Eraser';
+        toggleBtn.classList.remove('btn-danger');
+        canvas.style.cursor = '';
+        cursorEl.style.display = 'none';
+      }
+    };
+    undoBtn.onclick = () => {
+      if(!undoStack.length) return;
+      canvas.getContext('2d').putImageData(undoStack.pop(), 0, 0);
+    };
+  }
+
+  let cardSeq = 0;
+  function createCard(img, filename){
+    const id = 'sig' + (++cardSeq);
+    const card = document.createElement('div');
+    card.className = 'sig-card';
+    card.innerHTML = `
+      <div class="sig-titlebar">
+        <span class="fname">${filename.replace(/</g,'&lt;')}</span>
+        <div class="stat-row" id="stats-${id}"></div>
+        <button class="btn btn-sm btn-danger" id="rm-${id}" title="Remove">✕</button>
+      </div>
+      <div class="sig-body">
+        <div class="sig-preview">
+          <div class="canvas-wrapper" id="wrap-${id}">
+            <canvas class="sig-canvas" id="canvas-${id}"></canvas>
+          </div>
+        </div>
+        <div class="sig-controls">
+          <div class="sig-cg">
+            <div class="cg-label">Threshold</div>
+            <div class="tgl-row">
+              <div><div class="tgl-lbl">Auto (Otsu)</div><div class="tgl-sub">Histogram-optimal split</div></div>
+              <label class="pill"><input type="checkbox" id="auto-${id}" checked><span class="tr"></span></label>
+            </div>
+            <div class="cg">
+              <span class="cg-label">Level <span class="val" id="thrv-${id}">–</span></span>
+              <input type="range" min="0" max="255" value="160" id="thr-${id}" disabled>
+              <span class="hint">Higher = more pixels counted as ink.</span>
+            </div>
+            <div class="tgl-row">
+              <div><div class="tgl-lbl">Invert</div><div class="tgl-sub">Light ink on dark paper</div></div>
+              <label class="pill"><input type="checkbox" id="inv-${id}"><span class="tr"></span></label>
+            </div>
+            <div class="tgl-row">
+              <div><div class="tgl-lbl">Soft edges</div><div class="tgl-sub">Feathered anti-aliased ink</div></div>
+              <label class="pill"><input type="checkbox" id="soft-${id}" checked><span class="tr"></span></label>
+            </div>
+          </div>
+          <div class="sig-cg">
+            <div class="cg-label">Cleanup</div>
+            <div class="cg">
+              <span class="cg-label">Despeckle — min blob px <span class="val" id="spkv-${id}">30</span></span>
+              <input type="range" min="1" max="300" value="30" id="spk-${id}">
+              <span class="hint">Connected ink regions smaller than this are removed.</span>
+            </div>
+            <div class="cg">
+              <span class="cg-label">Crop padding <span class="val" id="padv-${id}">8</span></span>
+              <input type="range" min="0" max="60" value="8" id="pad-${id}">
+            </div>
+          </div>
+          <div class="sig-cg">
+            <div class="cg-label">Ink color</div>
+            <div class="seg">
+              <input type="radio" name="ink-${id}" id="ink-black-${id}" value="#000000" checked><label for="ink-black-${id}">Black</label>
+              <input type="radio" name="ink-${id}" id="ink-blue-${id}" value="#1e40af"><label for="ink-blue-${id}">Blue</label>
+              <input type="radio" name="ink-${id}" id="ink-custom-${id}" value="custom"><label for="ink-custom-${id}">Custom</label>
+            </div>
+            <div class="tgl-row">
+              <span class="tgl-sub">Custom color</span>
+              <input type="color" id="inkc-${id}" value="#14532d">
+            </div>
+          </div>
+          <div class="sig-cg">
+            <div class="cg-label">Eraser</div>
+            <div class="cg">
+              <span class="cg-label">Brush size <span class="val" id="esv-${id}">20</span></span>
+              <input type="range" min="4" max="120" value="20" id="esize-${id}">
+              <span class="hint">Paint on the preview to erase. Re-processing resets manual edits.</span>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-sm grow" id="etgl-${id}">✎ Eraser</button>
+              <button class="btn btn-sm" id="eundo-${id}" title="Undo erase">↩</button>
+            </div>
+          </div>
+          <div class="sig-cg">
+            <div class="cg-label">Export</div>
+            <div class="seg" id="scale-${id}">
+              <input type="radio" name="scale-${id}" id="s1-${id}" value="1" checked><label for="s1-${id}">1×</label>
+              <input type="radio" name="scale-${id}" id="s2-${id}" value="2"><label for="s2-${id}">2×</label>
+              <input type="radio" name="scale-${id}" id="s4-${id}" value="4"><label for="s4-${id}">4×</label>
+            </div>
+            <span class="hint">2×/4× use nearest-neighbour upscaling (crisp edges), applied at download only.</span>
+            <button class="btn btn-gold" id="dl-${id}">↓ Download transparent PNG</button>
+          </div>
+          <details class="dbg">
+            <summary>Processing log</summary>
+            <div class="log-panel" id="log-${id}"></div>
+          </details>
+        </div>
+      </div>
+      <div class="pipeline-wrap">
+        <details>
+          <summary>Pipeline steps</summary>
+          <div class="pipeline" id="pipe-${id}"></div>
+        </details>
+      </div>`;
+    gallery.prepend(card);
+
+    const canvas = card.querySelector(`#canvas-${id}`);
+    const wrapper = card.querySelector(`#wrap-${id}`);
+    const logEl = card.querySelector(`#log-${id}`);
+    const log = (msg, type = 'info') => {
+      const s = document.createElement('span');
+      s.className = 'log-' + type;
+      s.textContent = msg + '\n';
+      logEl.appendChild(s);
+      logEl.scrollTop = logEl.scrollHeight;
+    };
+
+    const el = k => card.querySelector(`#${k}-${id}`);
+    const autoChk = el('auto'), thrSlider = el('thr'), thrVal = el('thrv');
+    const invChk = el('inv'), softChk = el('soft');
+    const spkSlider = el('spk'), spkVal = el('spkv');
+    const padSlider = el('pad'), padVal = el('padv');
+    const customColor = el('inkc');
+    const eraserSize = el('esize'), eraserSzVal = el('esv');
+    const statsEl = el('stats'), pipeEl = el('pipe');
+
+    eraserSize.addEventListener('input', () => eraserSzVal.textContent = eraserSize.value);
+
+    const inkColor = () => {
+      const v = card.querySelector(`input[name="ink-${id}"]:checked`).value;
+      return hexToRgb(v === 'custom' ? customColor.value : v);
+    };
+
+    const update = () => {
+      spkVal.textContent = spkSlider.value;
+      padVal.textContent = padSlider.value;
+      thrSlider.disabled = autoChk.checked;
+      const t0 = performance.now();
+      const { canvas: result, stats, steps, threshold } = processSignature(img, {
+        autoThreshold: autoChk.checked,
+        threshold: parseInt(thrSlider.value, 10),
+        invert: invChk.checked,
+        minBlob: parseInt(spkSlider.value, 10),
+        pad: parseInt(padSlider.value, 10),
+        softEdges: softChk.checked,
+        inkColor: inkColor(),
+      });
+      if(autoChk.checked) thrSlider.value = threshold;
+      thrVal.textContent = threshold;
+      canvas.width = result.width;
+      canvas.height = result.height;
+      canvas.getContext('2d').drawImage(result, 0, 0);
+      statsEl.innerHTML = '';
+      for(const [k, v] of Object.entries(stats)){
+        const b = document.createElement('span');
+        b.className = 'badge' + (k === 'warning' ? ' low' : '');
+        b.innerHTML = `${k}: <b></b>`;
+        b.querySelector('b').textContent = v;
+        statsEl.appendChild(b);
+      }
+      pipeEl.innerHTML = '';
+      steps.forEach((s, i) => pipeEl.appendChild(pipeStep(s.label, s.canvas, `${id}_step${i}`)));
+      const etgl = el('etgl');
+      etgl.textContent = '✎ Eraser';
+      etgl.classList.remove('btn-danger');
+      canvas.style.cursor = '';
+      setupEraser(canvas, wrapper, eraserSize, etgl, el('eundo'));
+      log(`processed in ${(performance.now() - t0).toFixed(0)} ms — thr=${threshold} ${stats.inkPct} ink, blobs ${stats.blobs}, out ${stats.out}`, stats.warning ? 'warn' : 'ok');
+    };
+
+    [autoChk, invChk, softChk].forEach(c => c.addEventListener('change', update));
+    [thrSlider, spkSlider, padSlider].forEach(s => s.addEventListener('change', update));
+    thrSlider.addEventListener('input', () => thrVal.textContent = thrSlider.value);
+    spkSlider.addEventListener('input', () => spkVal.textContent = spkSlider.value);
+    padSlider.addEventListener('input', () => padVal.textContent = padSlider.value);
+    card.querySelectorAll(`input[name="ink-${id}"]`).forEach(r => r.addEventListener('change', update));
+    customColor.addEventListener('change', () => { el('ink-custom').checked = true; update(); });
+
+    el('dl').onclick = () => {
+      const scale = card.querySelector(`#scale-${id} input:checked`).value;
+      const base = filename.replace(/\.[^.]+$/, '');
+      downloadCanvas(canvas, scale, `Signature_${base}.png`);
+    };
+    el('rm').onclick = () => card.remove();
+
+    log(`loaded ${filename} (${(img.naturalWidth || img.width)}×${(img.naturalHeight || img.height)})`, 'info');
+    update();
+  }
+
+  function handleFiles(files){
+    files.forEach(file => {
+      if(!file.type || !file.type.startsWith('image/')) return;
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { createCard(img, file.name); URL.revokeObjectURL(url); };
+      img.onerror = () => URL.revokeObjectURL(url);
+      img.src = url;
+    });
+  }
+  wireDrop($('sig-drop'), $('sig-input'), handleFiles, { multiple: true });
+
+  return { processSignature, otsu, despeckle };
+})();
+
+/* ════════════════════════════════════════════════════════════════
+   4 · IMAGE CONVERTER  (canvas re-encode, batch + ZIP)
+   ════════════════════════════════════════════════════════════════ */
+const ImgTool = (() => {
+  const items = []; // {file, name, img, w, h, outBlob, outExt, card}
+  const grid = $('img-grid'), empty = $('img-empty'), statusEl = $('img-status');
+  const btnConvert = $('img-convert'), btnZip = $('img-zip'), btnClear = $('img-clear');
+
+  const getFmt = () => document.querySelector('input[name="img-fmt"]:checked').value;
+  document.querySelectorAll('input[name="img-fmt"]').forEach(r => r.addEventListener('change', () => {
+    $('img-quality-group').classList.toggle('hidden', getFmt() === 'image/png');
+  }));
+  $('img-quality').addEventListener('input', () => $('img-quality-val').textContent = $('img-quality').value + '%');
+
+  function refreshCount(){
+    $('img-count').textContent = items.length + ' file' + (items.length === 1 ? '' : 's');
+    btnConvert.disabled = !items.length;
+    btnClear.disabled = !items.length;
+    empty.classList.toggle('hidden', !!items.length);
+  }
+
+  function addFiles(files){
+    files.forEach(file => {
+      if(!file.type || !file.type.startsWith('image/')) return;
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const card = document.createElement('div');
+        card.className = 'rcard';
+        card.innerHTML = `
+          <div class="thumb"><img alt=""></div>
+          <div class="rbody">
+            <div class="rmeta"><span class="chip"></span><span class="dims"></span></div>
+            <div class="rmeta out-meta hidden"><span>→</span><span class="out-info"></span></div>
+            <div class="btn-row">
+              <button class="btn btn-sm grow dl-btn hidden">Download</button>
+              <button class="btn btn-sm rm-btn" title="Remove">✕</button>
+            </div>
+          </div>`;
+        card.querySelector('.thumb img').src = url;
+        card.querySelector('.chip').textContent = (file.type.split('/')[1] || '?').toUpperCase();
+        card.querySelector('.dims').textContent = `${img.naturalWidth}×${img.naturalHeight} · ${fmtBytes(file.size)}`;
+        const item = { file, name: file.name, img, outBlob: null, outExt: null, card };
+        card.querySelector('.rm-btn').addEventListener('click', () => {
+          const i = items.indexOf(item);
+          if(i >= 0) items.splice(i, 1);
+          card.remove();
+          URL.revokeObjectURL(url);
+          refreshCount();
+          btnZip.disabled = !items.some(it => it.outBlob);
+        });
+        grid.appendChild(card);
+        items.push(item);
+        refreshCount();
+      };
+      img.onerror = () => URL.revokeObjectURL(url);
+      img.src = url;
+    });
+  }
+  wireDrop($('img-drop'), $('img-input'), addFiles, { multiple: true });
+
+  async function convertOne(item, format, quality, maxDim){
+    const { img } = item;
+    let w = img.naturalWidth, h = img.naturalHeight;
+    if(maxDim && Math.max(w, h) > maxDim){
+      const s = maxDim / Math.max(w, h);
+      w = Math.max(1, Math.round(w * s));
+      h = Math.max(1, Math.round(h * s));
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if(format === 'image/jpeg'){ ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); }
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise(r => canvas.toBlob(r, format, quality));
+    if(!blob) throw new Error('Encoding failed for ' + item.name);
+    item.outBlob = blob;
+    item.outExt = format === 'image/jpeg' ? 'jpg' : format.split('/')[1];
+    item.outName = item.name.replace(/\.[^.]+$/, '') + '.' + item.outExt;
+    const om = item.card.querySelector('.out-meta');
+    om.classList.remove('hidden');
+    item.card.querySelector('.out-info').textContent = `${item.outExt.toUpperCase()} ${w}×${h} · ${fmtBytes(blob.size)}`;
+    const dl = item.card.querySelector('.dl-btn');
+    dl.classList.remove('hidden');
+    dl.onclick = () => downloadBlob(item.outBlob, item.outName);
+  }
+
+  btnConvert.addEventListener('click', async () => {
+    if(!items.length) return;
+    btnConvert.disabled = true; btnZip.disabled = true;
+    const format = getFmt();
+    const quality = (parseInt($('img-quality').value, 10) || 85) / 100;
+    const maxDim = parseInt($('img-maxdim').value, 10) || 0;
+    let ok = 0;
+    for(const item of items){
+      statusEl.textContent = `Converting ${item.name}…`;
+      try { await convertOne(item, format, quality, maxDim); ok++; }
+      catch(e){ console.error(e); statusEl.textContent = 'Error: ' + e.message; }
+      await new Promise(r => setTimeout(r, 0));
+    }
+    statusEl.textContent = `Converted ${ok}/${items.length} image(s).`;
+    btnConvert.disabled = false;
+    btnZip.disabled = !items.some(it => it.outBlob);
+  });
+
+  btnZip.addEventListener('click', async () => {
+    const converted = items.filter(it => it.outBlob);
+    if(!converted.length) return;
+    btnZip.disabled = true;
+    statusEl.textContent = 'Building ZIP…';
+    const seen = new Map();
+    const zip = await makeZip(converted.map(it => {
+      let name = it.outName;
+      const n = seen.get(name) || 0;
+      seen.set(name, n + 1);
+      if(n) name = name.replace(/\.([^.]+)$/, `-${n}.$1`);
+      return { name, blob: it.outBlob };
+    }));
+    downloadBlob(zip, 'converted-images.zip');
+    statusEl.textContent = `ZIP ready (${fmtBytes(zip.size)}).`;
+    btnZip.disabled = false;
+  });
+
+  btnClear.addEventListener('click', () => {
+    items.splice(0, items.length);
+    grid.querySelectorAll('.rcard').forEach(c => c.remove());
+    statusEl.textContent = '';
+    btnZip.disabled = true;
+    refreshCount();
+  });
+
+  return {};
+})();
+
+/* ════════════════════════════════════════════════════════════════
+   5 · TRANSCODE  (ffmpeg command builder + in-browser audio → WAV)
+   ════════════════════════════════════════════════════════════════ */
+const TranscodeTool = (() => {
+  /* ---- command builder (intent ported from SimpleTranscoding/transcode.sh) ---- */
+  const ENCODERS = {
+    h264: { none: 'libx264',    nvidia: 'h264_nvenc', intel: 'h264_qsv', amd: 'h264_amf', container: 'mp4'  },
+    hevc: { none: 'libx265',    nvidia: 'hevc_nvenc', intel: 'hevc_qsv', amd: 'hevc_amf', container: 'mkv'  },
+    av1:  { none: 'libaom-av1', nvidia: 'av1_nvenc',  intel: 'av1_qsv',  amd: 'av1_amf',  container: 'mkv'  },
+    vp9:  { none: 'libvpx-vp9', nvidia: null,          intel: 'vp9_qsv',  amd: null,       container: 'webm' },
+  };
+
+  function qualityFlags(encoder, q){
+    if(/nvenc$/.test(encoder))  return [`-rc vbr -cq ${q} -preset p6`, `NVENC constant-quality VBR at CQ ${q}, preset p6 (slower = better).`];
+    if(/qsv$/.test(encoder))    return [`-global_quality ${q} -preset slow`, `QSV ICQ quality ${q} with the slow preset.`];
+    if(/amf$/.test(encoder))    return [`-rc cqp -qp_p ${q} -qp_i ${q}`, `AMF constant-QP mode at QP ${q} for both I and P frames.`];
+    if(encoder === 'libvpx-vp9') return [`-crf ${q} -b:v 0 -deadline good -cpu-used 2`, `VP9 constant quality: CRF ${q} with -b:v 0 (required), good deadline, speed 2.`];
+    if(encoder === 'libaom-av1') return [`-crf ${q} -b:v 0 -cpu-used 4`, `AOM AV1 constant quality: CRF ${q}; -cpu-used 4 balances speed vs compression.`];
+    return [`-crf ${q} -preset slow`, `Constant Rate Factor ${q} with the slow preset (better compression, same quality).`];
+  }
+
+  function build(){
+    const input = ($('tc-input').value.trim() || 'input.mkv');
+    const codec = document.querySelector('input[name="tc-codec"]:checked').value;
+    const gpu = $('tc-gpu').value;
+    const q = parseInt($('tc-crf').value, 10);
+    const res = document.querySelector('input[name="tc-res"]:checked').value;
+    const audio = $('tc-audio').value;
+    const subs = $('tc-subs').value;
+    const twopass = $('tc-twopass').checked;
+
+    const explain = [];
+    let encoder = ENCODERS[codec][gpu];
+    if(!encoder){
+      encoder = ENCODERS[codec].none;
+      explain.push(['(fallback)', `No reliable ${codec.toUpperCase()} hardware encoder for that GPU — using software ${encoder} instead.`]);
+    }
+    const container = ENCODERS[codec].container;
+    const base = input.replace(/\.[^.\/\\]+$/, '');
+    const output = `${base}_encoded.${container}`;
+
+    const parts = [`ffmpeg -y -i "${input}"`];
+    explain.push([`-i "${input}"`, `Read the source file; -y overwrites ${output} if it exists.`]);
+
+    parts.push(`-map 0:v:0`);
+    explain.push(['-map 0:v:0', 'Take the first video stream.']);
+
+    if(audio !== 'none'){
+      parts.push('-map 0:a?');
+      explain.push(['-map 0:a?', 'Take all audio streams if any exist (? = don’t fail when there are none).']);
+    }
+    if(subs !== 'none'){
+      parts.push('-map 0:s?');
+      explain.push(['-map 0:s?', 'Take all subtitle streams if any exist.']);
+    }
+
+    parts.push(`-c:v ${encoder}`);
+    explain.push([`-c:v ${encoder}`, gpu === 'none'
+      ? `Encode video with the software ${codec.toUpperCase()} encoder — slowest but best quality per bit.`
+      : `Encode video on the ${gpu.toUpperCase()} hardware block — much faster, slightly larger files.`]);
+
+    if(res !== 'original'){
+      parts.push(`-vf scale=-2:${res}`);
+      explain.push([`-vf scale=-2:${res}`, `Downscale to ${res}p; -2 keeps the width even (required by most encoders) while preserving aspect ratio.`]);
+    }
+
+    const [qf, qe] = qualityFlags(encoder, q);
+    parts.push(qf);
+    explain.push([qf, qe]);
+
+    if(audio === 'copy'){
+      if(container === 'webm'){
+        parts.push('-c:a libopus -b:a 128k -af aformat=channel_layouts=stereo');
+        explain.push(['-c:a libopus …', 'WebM can’t carry most source audio codecs — re-encode to Opus 128k, downmixed to stereo (avoids the libopus channel-layout error).']);
+      } else {
+        parts.push('-c:a copy');
+        explain.push(['-c:a copy', 'Pass audio through untouched — no quality loss, no time spent.']);
+      }
+    } else if(audio === 'opus'){
+      parts.push('-c:a libopus -b:a 128k -af aformat=channel_layouts=stereo');
+      explain.push(['-c:a libopus -b:a 128k', 'Re-encode audio to Opus at 128 kb/s, stereo.']);
+    } else if(audio === 'aac'){
+      parts.push('-c:a aac -b:a 192k');
+      explain.push(['-c:a aac -b:a 192k', 'Re-encode audio to AAC at 192 kb/s.']);
+    } else {
+      parts.push('-an');
+      explain.push(['-an', 'Strip all audio.']);
+    }
+
+    if(subs === 'copy'){
+      if(container === 'mp4'){
+        parts.push('-c:s mov_text');
+        explain.push(['-c:s mov_text', 'MP4 only supports mov_text subtitles — text subs are converted, image subs will fail (use MKV for those).']);
+      } else if(container === 'webm'){
+        parts.push('-c:s webvtt');
+        explain.push(['-c:s webvtt', 'WebM only supports WebVTT subtitles — text subs are converted.']);
+      } else {
+        parts.push('-c:s copy');
+        explain.push(['-c:s copy', 'Pass subtitle streams through untouched (MKV accepts almost anything).']);
+      }
+    } else if(subs === 'none'){
+      parts.push('-sn');
+      explain.push(['-sn', 'Strip all subtitles.']);
+    }
+
+    let cmd;
+    const canTwoPass = twopass && (encoder === 'libvpx-vp9' || encoder === 'libaom-av1');
+    if(canTwoPass){
+      const common = parts.slice(1).join(' ');
+      cmd = `ffmpeg -y -i "${input}" ${common} -pass 1 -an -f null /dev/null && \\\nffmpeg -i "${input}" ${common} -pass 2 "${output}"`;
+      explain.push(['-pass 1/2', 'Two-pass: the first pass analyses the video (output discarded), the second uses that data for smarter bit allocation.']);
+    } else {
+      if(twopass) explain.push(['(two-pass)', 'Two-pass is only wired for software VP9/AV1 here — CRF single-pass is already optimal for the other encoders.']);
+      cmd = parts.join(' ') + ` "${output}"`;
+    }
+    explain.push([`"${output}"`, `${container.toUpperCase()} container — the natural home for ${codec.toUpperCase()}.`]);
+    return { cmd, explain };
+  }
+
+  function render(){
+    const codec = document.querySelector('input[name="tc-codec"]:checked').value;
+    const crf = $('tc-crf');
+    const max = (codec === 'vp9' || codec === 'av1') ? 63 : 51;
+    if(parseInt(crf.max, 10) !== max){
+      crf.max = max;
+      if(parseInt(crf.value, 10) > max) crf.value = max;
+    }
+    $('tc-crf-val').textContent = crf.value;
+    const { cmd, explain } = build();
+    $('tc-cmd').textContent = cmd;
+    const ex = $('tc-explain');
+    ex.innerHTML = '';
+    for(const [flag, why] of explain){
+      const div = document.createElement('div');
+      div.className = 'explain-line';
+      const c = document.createElement('code');
+      c.textContent = flag;
+      const s = document.createElement('span');
+      s.textContent = why;
+      div.append(c, s);
+      ex.appendChild(div);
+    }
+  }
+
+  ['tc-input','tc-gpu','tc-audio','tc-subs','tc-twopass','tc-crf'].forEach(id => {
+    $(id).addEventListener('input', render);
+    $(id).addEventListener('change', render);
+  });
+  document.querySelectorAll('input[name="tc-codec"], input[name="tc-res"]').forEach(r => r.addEventListener('change', render));
+
+  $('tc-copy').addEventListener('click', async () => {
+    const btn = $('tc-copy');
+    try {
+      if(navigator.clipboard && window.isSecureContext){
+        await navigator.clipboard.writeText($('tc-cmd').textContent);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = $('tc-cmd').textContent;
+        ta.style.position = 'fixed'; ta.style.left = '-9999px';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      btn.textContent = 'Copied ✅';
+    } catch(_){ btn.textContent = 'Failed ❌'; }
+    setTimeout(() => btn.textContent = 'Copy', 1200);
+  });
+
+  render();
+
+  /* ---- audio → WAV (in-browser) ---- */
+  let audioBuffer = null, audioName = 'audio';
+  const wavState = $('wav-state'), wavInfo = $('wav-info'), wavExport = $('wav-export');
+
+  function encodeWav(buf, mono){
+    const chs = mono ? 1 : buf.numberOfChannels;
+    const rate = buf.sampleRate, frames = buf.length;
+    const dataLen = frames * chs * 2;
+    const out = new DataView(new ArrayBuffer(44 + dataLen));
+    const wstr = (o, s) => { for(let i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
+    wstr(0, 'RIFF'); out.setUint32(4, 36 + dataLen, true); wstr(8, 'WAVE');
+    wstr(12, 'fmt '); out.setUint32(16, 16, true);
+    out.setUint16(20, 1, true);                 // PCM
+    out.setUint16(22, chs, true);
+    out.setUint32(24, rate, true);
+    out.setUint32(28, rate * chs * 2, true);    // byte rate
+    out.setUint16(32, chs * 2, true);           // block align
+    out.setUint16(34, 16, true);                // bits per sample
+    wstr(36, 'data'); out.setUint32(40, dataLen, true);
+    const srcChs = [];
+    for(let c = 0; c < buf.numberOfChannels; c++) srcChs.push(buf.getChannelData(c));
+    let o = 44;
+    for(let i = 0; i < frames; i++){
+      if(mono){
+        let s = 0;
+        for(let c = 0; c < srcChs.length; c++) s += srcChs[c][i];
+        s = Math.max(-1, Math.min(1, s / srcChs.length));
+        out.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        o += 2;
+      } else {
+        for(let c = 0; c < chs; c++){
+          const s = Math.max(-1, Math.min(1, srcChs[c][i]));
+          out.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+          o += 2;
+        }
+      }
+    }
+    return new Blob([out.buffer], { type: 'audio/wav' });
+  }
+
+  async function loadAudio(file){
+    wavState.textContent = 'Decoding…';
+    wavInfo.textContent = '';
+    wavExport.disabled = true;
+    audioBuffer = null;
+    try {
+      const arr = await file.arrayBuffer();
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      audioBuffer = await ctx.decodeAudioData(arr);
+      ctx.close();
+      audioName = file.name.replace(/\.[^.]+$/, '');
+      wavInfo.innerHTML = `<b>${file.name.replace(/</g,'&lt;')}</b> — ${audioBuffer.duration.toFixed(1)}s · ${audioBuffer.numberOfChannels} ch · ${audioBuffer.sampleRate} Hz`;
+      wavState.textContent = 'Ready';
+      wavExport.disabled = false;
+    } catch(e){
+      wavState.textContent = 'Error';
+      wavInfo.textContent = 'Could not decode this file: ' + (e && e.message || e);
+    }
+  }
+
+  wireDrop($('wav-drop'), $('wav-input'), files => loadAudio(files[0]));
+  wavExport.addEventListener('click', () => {
+    if(!audioBuffer) return;
+    wavState.textContent = 'Encoding…';
+    setTimeout(() => {
+      const blob = encodeWav(audioBuffer, $('wav-mono').checked);
+      downloadBlob(blob, audioName + '.wav');
+      wavState.textContent = `WAV ready (${fmtBytes(blob.size)})`;
+    }, 30);
+  });
+
+  return { build, encodeWav };
+})();
+
+/* expose internals for testing / power users */
+window.MediaTools = {
+  makeZip, crc32, downloadBlob,
+  processSignature: SigTool.processSignature,
+  buildFfmpegCommand: TranscodeTool.build,
+  encodeWav: TranscodeTool.encodeWav,
+  parsePageRange: PdfTool.parseRange,
+  tesseractOptions: OcrTool.TESS_OPTS,
+};
+</script>
+
+<script src="vendor/tesseract/tesseract.min.js" defer></script>
+<script src="carino-navbar.js" data-app="Media" defer></script>
+</body>
+</html>
