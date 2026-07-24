@@ -6,8 +6,8 @@ Consolidates and supersedes three earlier apps — **pdf2img-gui**, **SimpleOCR*
 
 ## Tools
 
-### 0. Detect — unified entry
-Drop or paste **anything** (Ctrl+V works from any tab). The file is identified by its **magic bytes** — not its extension — and every tool that can handle it is offered as a one-click outcome:
+### 0. The file is the interface
+There are no module tabs. The site opens on a single drop/paste surface (Ctrl+V works anywhere): the file is identified by its **magic bytes** — not its extension — and everything you can do with it is offered as a one-click outcome. Picking an outcome opens that workspace for the file; a **← File** button returns to the same detection result so you can run another task on it:
 
 | Detected | Outcomes |
 |---|---|

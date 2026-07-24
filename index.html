@@ -51,29 +51,26 @@
     a { color: var(--accent); }
     code { font-family: var(--mono); }
 
-    /* ─── Tool tab strip ──────────────────────────────────────── */
-    .tool-tabs {
-      display: flex; gap: 4px; flex-wrap: wrap;
-      padding: 10px 20px 0; border-bottom: 1px solid var(--border);
-      background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
-      position: sticky; top: 0; z-index: 60;
+    /* ─── Workspace bar (back + tool + file) ─────────────────── */
+    .ws-bar { display: none; align-items: center; gap: 10px; padding: 0 0 10px; flex-shrink: 0; }
+    .ws-bar.on { display: flex; }
+    .ws-title {
+      font-family: var(--display); font-weight: 900; font-size: 1.05rem;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      background: var(--gold-text); -webkit-background-clip: text;
+      background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .tool-tab {
-      appearance: none; background: transparent; border: none; cursor: pointer;
-      font-family: var(--mono); font-size: 0.68rem; font-weight: 700;
-      letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--text-sec); padding: 10px 14px 12px;
-      border-bottom: 2px solid transparent; transition: 0.15s;
-      display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+    .ws-file {
+      font-family: var(--mono); font-size: 0.68rem; color: var(--text-sec);
+      border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+      padding: 3px 9px; border-radius: 999px; max-width: 44ch;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .tool-tab svg { width: 14px; height: 14px; }
-    .tool-tab:hover { color: var(--accent); background: var(--accent-faint); }
-    .tool-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
     /* ─── Tool sections ───────────────────────────────────────── */
-    main { flex: 1; min-height: 0; width: 100%; max-width: 1440px; margin: 0 auto; padding: 14px 20px; }
+    main { flex: 1; min-height: 0; width: 100%; max-width: 1440px; margin: 0 auto; padding: 14px 20px; display: flex; flex-direction: column; }
     .tool { display: none; }
-    .tool.active { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow-y: auto; }
+    .tool.active { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
     .tool-head { margin-bottom: 12px; flex-shrink: 0; }
     .tool-head h1 {
@@ -354,40 +351,21 @@
 <body>
 
 <!-- ─── Tool tab strip ───────────────────────────────────────── -->
-<nav class="tool-tabs" id="toolTabs" aria-label="Tools">
-  <button class="tool-tab active" data-tool="auto">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    Detect
-  </button>
-  <button class="tool-tab" data-tool="pdf">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-    PDF → Images
-  </button>
-  <button class="tool-tab" data-tool="ocr">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-    OCR
-  </button>
-  <button class="tool-tab" data-tool="signature">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
-    Signature
-  </button>
-  <button class="tool-tab" data-tool="images">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-    Image Convert
-  </button>
-  <button class="tool-tab" data-tool="transcode">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-    Transcode
-  </button>
-</nav>
 
 <main>
 
-  <!-- ═══ 0 · DETECT (unified entry) ════════════════════════════ -->
+  <!-- ─── Workspace bar: back to the drop screen + context ────── -->
+  <div class="ws-bar" id="ws-bar">
+    <button class="btn btn-sm" id="ws-back" title="Back to the file screen">← File</button>
+    <span class="ws-title" id="ws-title"></span>
+    <span class="ws-file hidden" id="ws-file"></span>
+  </div>
+
+  <!-- ═══ 0 · FILE ENTRY (the whole interface starts here) ══════ -->
   <section class="tool active" id="tool-auto">
     <div class="tool-head">
-      <h1>Detect</h1>
-      <p>Drop or paste anything — the file is identified by its magic bytes and every tool that can handle it lights up. Paste (Ctrl+V) works from any tab.</p>
+      <h1>Media</h1>
+      <p>Drop or paste a file — it is identified by its magic bytes and you choose what to do with it. Everything runs in this browser; nothing is uploaded.</p>
     </div>
     <div class="auto-stage">
       <div class="drop auto-drop" id="auto-drop" tabindex="0" role="button" aria-label="Drop or paste any file">
@@ -412,11 +390,7 @@
 
   <!-- ═══ 1 · PDF → IMAGES ══════════════════════════════════════ -->
   <section class="tool" id="tool-pdf">
-    <div class="tool-head">
-      <h1>PDF → Images</h1>
-      <p>Render PDF pages to PNG, JPEG or WebP entirely in your browser — nothing is uploaded. Pick a DPI, a page range, and download pages one by one or as a ZIP.</p>
-    </div>
-    <div class="split">
+        <div class="split">
       <div class="panel">
         <div class="panel-head"><span class="panel-title">Input & Settings</span><span class="badge" id="pdf-state">Idle</span></div>
         <div class="panel-body">
@@ -494,11 +468,7 @@
 
   <!-- ═══ 2 · OCR ═══════════════════════════════════════════════ -->
   <section class="tool" id="tool-ocr">
-    <div class="tool-head">
-      <h1>OCR — Text Recognition</h1>
-      <p>Extract text from images with Tesseract, fully offline — the engine and the English, Spanish and Portuguese models ship with this site. Drop, paste (Ctrl+V) or browse.</p>
-    </div>
-    <div class="split-even">
+        <div class="split-even">
       <div class="panel relative">
         <div class="panel-head"><span class="panel-title">Input</span><span class="badge" id="ocr-state">Idle</span></div>
         <div class="panel-body">
@@ -653,11 +623,7 @@
 
   <!-- ═══ 4 · IMAGE CONVERT ═════════════════════════════════════ -->
   <section class="tool" id="tool-images">
-    <div class="tool-head">
-      <h1>Image Converter</h1>
-      <p>Batch-convert images to PNG, JPEG or WebP with quality control and optional downscaling — HEIC/HEIF input is decoded right here with a vendored libheif. Download individually or as a single ZIP.</p>
-    </div>
-    <div class="split">
+        <div class="split">
       <div class="panel">
         <div class="panel-head"><span class="panel-title">Settings</span><span class="badge" id="img-count">0 files</span></div>
         <div class="panel-body">
@@ -712,11 +678,7 @@
 
   <!-- ═══ 5 · TRANSCODE ═════════════════════════════════════════ -->
   <section class="tool" id="tool-transcode">
-    <div class="tool-head">
-      <h1>Transcode</h1>
-      <p>Browsers can't transcode video offline without shipping a ~30&nbsp;MB WASM blob, so this is the honest tool: a precise <code>ffmpeg</code> command builder for video — plus an audio converter that <em>does</em> run right here (any audio your browser can decode → 16-bit PCM WAV).</p>
-    </div>
-    <div class="split-even">
+        <div class="split-even">
       <div class="panel">
         <div class="panel-head"><span class="panel-title">Video → ffmpeg command</span></div>
         <div class="panel-body">
@@ -834,17 +796,27 @@
 const $ = (id) => document.getElementById(id);
 const fmtBytes = (n) => n < 1024 ? n + ' B' : n < 1048576 ? (n/1024).toFixed(1) + ' KB' : (n/1048576).toFixed(2) + ' MB';
 
-/* ─── tabs + hash routing ─── */
+/* ─── workspaces: no tabs — the received file decides where you go ─── */
 const TOOLS = ['auto','pdf','ocr','signature','images','transcode'];
+const TOOL_TITLES = { pdf: 'PDF → Images', ocr: 'OCR', signature: 'Signature Cleanup', images: 'Image Converter', transcode: 'Transcode' };
+let wsFileName = '';
+function setWsFile(name){
+  wsFileName = name || '';
+  const el = $('ws-file');
+  el.textContent = wsFileName;
+  el.classList.toggle('hidden', !wsFileName);
+}
 function showTool(name){
   if(!TOOLS.includes(name)) name = 'auto';
-  document.querySelectorAll('.tool-tab').forEach(b => b.classList.toggle('active', b.dataset.tool === name));
   TOOLS.forEach(t => $('tool-' + t).classList.toggle('active', t === name));
-  if(location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+  $('ws-bar').classList.toggle('on', name !== 'auto');
+  if(name !== 'auto'){
+    $('ws-title').textContent = TOOL_TITLES[name];
+    setWsFile(wsFileName);
+  }
 }
-document.querySelectorAll('.tool-tab').forEach(b => b.addEventListener('click', () => showTool(b.dataset.tool)));
-window.addEventListener('hashchange', () => showTool(location.hash.slice(1)));
-showTool(location.hash.slice(1) || 'auto');
+$('ws-back').addEventListener('click', () => showTool('auto'));
+showTool('auto');
 
 /* ─── download helper (replaces file-saver) ─── */
 function downloadBlob(blob, filename){
@@ -1064,6 +1036,7 @@ const PdfTool = (() => {
     chip.classList.remove('hidden');
     pdfBytes = new Uint8Array(await file.arrayBuffer());
     pdfName = file.name.replace(/\.[^.]+$/, '');
+    setWsFile(file.name);
     btnConvert.disabled = false;
     stateEl.textContent = 'Loaded';
     statusEl.textContent = 'PDF loaded — ready to convert.';
@@ -1246,6 +1219,7 @@ const OcrTool = (() => {
   function loadFile(file){
     if(!file || !file.type || !file.type.startsWith('image/')) return;
     currentFile = file;
+    setWsFile(file.name);
     cleanupURL();
     activeURL = URL.createObjectURL(file);
     preview.src = activeURL;
@@ -1845,6 +1819,7 @@ const SigTool = (() => {
 
   function activate(item){
     current = item;
+    setWsFile(item.name);
     items.forEach(it => {
       it.thumbBtn.classList.toggle('active', it === item);
       it.canvas.classList.toggle('hidden', it !== item);
@@ -2348,6 +2323,7 @@ const TranscodeTool = (() => {
       wavInfo.innerHTML = `<b>${file.name.replace(/</g,'&lt;')}</b> — ${audioBuffer.duration.toFixed(1)}s · ${audioBuffer.numberOfChannels} ch · ${audioBuffer.sampleRate} Hz`;
       wavState.textContent = 'Ready';
       wavExport.disabled = false;
+      setWsFile(file.name);
     } catch(e){
       wavState.textContent = 'Error';
       wavInfo.textContent = 'Could not decode this file: ' + (e && e.message || e);
@@ -2368,7 +2344,7 @@ const TranscodeTool = (() => {
   return {
     build, encodeWav,
     openAudio: loadAudio,
-    setVideoName(name){ $('tc-input').value = name; render(); },
+    setVideoName(name){ $('tc-input').value = name; setWsFile(name); render(); },
   };
 })();
 
@@ -2396,6 +2372,7 @@ const AutoTool = (() => {
     const first = files[0];
     const info = await sniffFile(first);
     $('auto-name').textContent = files.length > 1 ? `${first.name} (+${files.length - 1} more)` : first.name;
+    setWsFile(files.length > 1 ? `${first.name} +${files.length - 1}` : first.name);
     $('auto-meta').textContent = `${info.label} · ${fmtBytes(files.reduce((s, f) => s + f.size, 0))}`;
     $('auto-ico').textContent = ({ pdf: 'PDF', image: 'IMG', heic: 'HEIC', audio: 'AUD', video: 'VID' })[info.kind] || 'BIN';
     outcomes.innerHTML = '';
@@ -2441,6 +2418,7 @@ const AutoTool = (() => {
   $('auto-clear').addEventListener('click', () => {
     result.classList.add('hidden');
     outcomes.innerHTML = '';
+    setWsFile('');
   });
 
   /* global paste: any tab except the ones with their own paste handling */
