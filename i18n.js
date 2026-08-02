@@ -6,6 +6,10 @@
 
 const I18N = {
     es: {
+        'Late shift.': 'Turno nocturno.',
+        'Good morning.': 'Buenos días.',
+        'Good afternoon.': 'Buenas tardes.',
+        'Good evening.': 'Buenas noches.',
         // Workspace bar / tool titles
         '← File': '← Archivo',
         'PDF → Images': 'PDF → Imágenes',
@@ -181,6 +185,10 @@ const I18N = {
         'media.carino.systems — every tool runs entirely in your browser; no file ever leaves this device.': 'media.carino.systems — todas las herramientas se ejecutan íntegramente en tu navegador; ningún archivo sale de este dispositivo.',
     },
     'pt-BR': {
+        'Late shift.': 'Turno da noite.',
+        'Good morning.': 'Bom dia.',
+        'Good afternoon.': 'Boa tarde.',
+        'Good evening.': 'Boa noite.',
         '← File': '← Arquivo',
         'PDF → Images': 'PDF → Imagens',
         'Signature Cleanup': 'Limpeza de assinaturas',
@@ -346,6 +354,10 @@ const I18N = {
         'media.carino.systems — every tool runs entirely in your browser; no file ever leaves this device.': 'media.carino.systems — todas as ferramentas rodam inteiramente no seu navegador; nenhum arquivo sai deste dispositivo.',
     },
     ja: {
+        'Late shift.': '夜勤お疲れさま。',
+        'Good morning.': 'おはようございます。',
+        'Good afternoon.': 'こんにちは。',
+        'Good evening.': 'こんばんは。',
         '← File': '← ファイル',
         'PDF → Images': 'PDF → 画像',
         'Signature Cleanup': '署名クリーンアップ',
@@ -511,6 +523,10 @@ const I18N = {
         'media.carino.systems — every tool runs entirely in your browser; no file ever leaves this device.': 'media.carino.systems — すべてのツールはブラウザ内で完結し、ファイルがこのデバイスの外に出ることはありません。',
     },
     ru: {
+        'Late shift.': 'Ночная смена.',
+        'Good morning.': 'Доброе утро.',
+        'Good afternoon.': 'Добрый день.',
+        'Good evening.': 'Добрый вечер.',
         '← File': '← Файл',
         'PDF → Images': 'PDF → изображения',
         'Signature Cleanup': 'Очистка подписи',
