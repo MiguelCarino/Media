@@ -464,33 +464,9 @@
           </div>
           <div id="pdf-grid" class="result-grid hidden"></div>
         </div>
+        <!-- Conversion sits above the text: it is what most files are here for,
+             and OCR fills itself in on its own while you read the format row. -->
         <div class="auto-work">
-        <div class="auto-ocr hidden" id="auto-ocr">
-          <div class="ao-head">
-            <span>🔍</span><span data-i18n>Extracted text</span>
-            <span class="badge" id="ao-state">…</span>
-          </div>
-          <div class="ocr-ctl">
-            <select id="ocr-lang" title="OCR language">
-              <option value="eng" selected>English</option>
-              <option value="spa">Español</option>
-              <option value="por">Português</option>
-              <option value="eng+spa">English + Español</option>
-              <option value="eng+por">English + Português</option>
-              <option value="spa+por">Español + Português</option>
-            </select>
-            <button id="ocr-invert-view" class="btn btn-sm" type="button" data-i18n>Invert view 🌓</button>
-            <button id="ocr-invert" class="btn btn-sm" type="button" data-i18n>Invert for OCR ⚡</button>
-            <button id="ocr-rotate" class="btn btn-sm" type="button" data-i18n>Rotate ⤾</button>
-            <button id="ocr-run" class="btn btn-sm" type="button" data-i18n>Run OCR</button>
-          </div>
-          <div class="bar"><div id="ao-bar"></div></div>
-          <pre id="ao-text"></pre>
-          <div class="ao-acts">
-            <button id="ao-copy" class="btn btn-gold btn-sm" type="button" data-i18n>Copy</button>
-            <button id="ocr-download" class="btn btn-sm" type="button" data-i18n>Download .txt</button>
-          </div>
-        </div>
         <div class="auto-ocr auto-conv hidden" id="auto-conv">
           <div class="ao-head">
             <span>🖼️</span><span data-i18n>Convert</span>
@@ -564,6 +540,32 @@
           </div>
           <div class="bar"><div id="pdf-bar"></div></div>
           <div class="status-line" id="pdf-status"></div>
+        </div>
+        <div class="auto-ocr hidden" id="auto-ocr">
+          <div class="ao-head">
+            <span>🔍</span><span data-i18n>Extracted text</span>
+            <span class="badge" id="ao-state">…</span>
+          </div>
+          <div class="ocr-ctl">
+            <select id="ocr-lang" title="OCR language">
+              <option value="eng" selected>English</option>
+              <option value="spa">Español</option>
+              <option value="por">Português</option>
+              <option value="eng+spa">English + Español</option>
+              <option value="eng+por">English + Português</option>
+              <option value="spa+por">Español + Português</option>
+            </select>
+            <button id="ocr-invert-view" class="btn btn-sm" type="button" data-i18n>Invert view 🌓</button>
+            <button id="ocr-invert" class="btn btn-sm" type="button" data-i18n>Invert for OCR ⚡</button>
+            <button id="ocr-rotate" class="btn btn-sm" type="button" data-i18n>Rotate ⤾</button>
+            <button id="ocr-run" class="btn btn-sm" type="button" data-i18n>Run OCR</button>
+          </div>
+          <div class="bar"><div id="ao-bar"></div></div>
+          <pre id="ao-text"></pre>
+          <div class="ao-acts">
+            <button id="ao-copy" class="btn btn-gold btn-sm" type="button" data-i18n>Copy</button>
+            <button id="ocr-download" class="btn btn-sm" type="button" data-i18n>Download .txt</button>
+          </div>
         </div>
         </div>
         </div>
