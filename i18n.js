@@ -164,8 +164,6 @@ const I18N = {
         'Encoding…': 'Codificando…',
         'Could not decode this file:': 'No se pudo decodificar este archivo:',
         'WAV ready': 'WAV listo',
-        // Footer
-        'media.carino.systems — every tool runs entirely in your browser; no file ever leaves this device.': 'media.carino.systems — todas las herramientas se ejecutan íntegramente en tu navegador; ningún archivo sale de este dispositivo.',
     },
     'pt-BR': {
         'Late shift.': 'Turno da noite.',
@@ -317,7 +315,6 @@ const I18N = {
         'Encoding…': 'Codificando…',
         'Could not decode this file:': 'Não foi possível decodificar este arquivo:',
         'WAV ready': 'WAV pronto',
-        'media.carino.systems — every tool runs entirely in your browser; no file ever leaves this device.': 'media.carino.systems — todas as ferramentas rodam inteiramente no seu navegador; nenhum arquivo sai deste dispositivo.',
     },
     ja: {
         'Late shift.': '夜勤お疲れさま。',
@@ -469,7 +466,6 @@ const I18N = {
         'Encoding…': 'エンコード中…',
         'Could not decode this file:': 'このファイルをデコードできませんでした:',
         'WAV ready': 'WAVの準備完了',
-        'media.carino.systems — every tool runs entirely in your browser; no file ever leaves this device.': 'media.carino.systems — すべてのツールはブラウザ内で完結し、ファイルがこのデバイスの外に出ることはありません。',
     },
     ru: {
         'Late shift.': 'Ночная смена.',
@@ -621,7 +617,6 @@ const I18N = {
         'Encoding…': 'Кодирование…',
         'Could not decode this file:': 'Не удалось декодировать этот файл:',
         'WAV ready': 'WAV готов',
-        'media.carino.systems — every tool runs entirely in your browser; no file ever leaves this device.': 'media.carino.systems — все инструменты работают полностью в вашем браузере; ни один файл не покидает это устройство.',
     },
 };
 
