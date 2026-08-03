@@ -947,13 +947,16 @@ function wireDrop(dropEl, inputEl, onFiles, { multiple = false } = {}){
 
 /* ─── magic-byte file identification ─── */
 async function sniffFile(file){
-  const buf = new Uint8Array(await file.slice(0, 64).arrayBuffer());
+  // 132 bytes rather than 64: DICOM hides its marker behind a 128-byte preamble,
+  // and everything else here is decided inside the first sixteen.
+  const buf = new Uint8Array(await file.slice(0, 132).arrayBuffer());
   const ascii = (o, s) => {
     if(o + s.length > buf.length) return false;
     for(let i = 0; i < s.length; i++) if(buf[o + i] !== s.charCodeAt(i)) return false;
     return true;
   };
   const ftyp = ascii(4, 'ftyp') ? String.fromCharCode.apply(null, Array.from(buf.slice(8, 12))).trim().toLowerCase() : null;
+  if(ascii(128, 'DICM'))                     return { kind: 'dicom', label: 'DICOM medical image' };
   if(ascii(0, '%PDF'))                       return { kind: 'pdf',   label: 'PDF document' };
   if(buf[0] === 0x89 && ascii(1, 'PNG'))     return { kind: 'image', label: 'PNG image' };
   if(buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return { kind: 'image', label: 'JPEG image' };
@@ -975,6 +978,9 @@ async function sniffFile(file){
   if(file.type.startsWith('image/'))         return { kind: 'image', label: file.type };
   if(file.type.startsWith('audio/'))         return { kind: 'audio', label: file.type };
   if(file.type.startsWith('video/'))         return { kind: 'video', label: file.type };
+  // Last, and only on the name: plenty of DICOM comes without the preamble, but
+  // a PNG someone renamed .dcm is still a PNG and was caught well above here.
+  if(/\.(dcm|dicom)$/i.test(file.name || ''))return { kind: 'dicom', label: 'DICOM medical image' };
   if(ascii(0, 'PK'))                         return { kind: 'unknown', label: 'ZIP archive' };
   return { kind: 'unknown', label: file.type || 'unknown binary' };
 }
@@ -2478,9 +2484,10 @@ const AutoTool = (() => {
      If the exchange fails the inspector is open regardless and the file can
      still be dropped by hand, so this fails quietly rather than blocking. */
   const META_URL = 'https://metadata.carino.systems/';
-  function sendToMetadata(file){
-    if(!window.CarinoBridge){ window.open(META_URL, '_blank', 'noopener'); return; }
-    CarinoBridge.send(META_URL, file, { timeout: 30000 }).catch(() => {});
+  const DICOM_URL = 'https://dicom.carino.systems/';
+  function sendTo(url, file){
+    if(!window.CarinoBridge){ window.open(url, '_blank', 'noopener'); return; }
+    CarinoBridge.send(url, file, { timeout: 30000 }).catch(() => {});
   }
 
   function outcomeBtn(icon, title, desc, fn){
@@ -2568,7 +2575,7 @@ const AutoTool = (() => {
     $('auto-name').textContent = files.length > 1 ? `${first.name} (+${files.length - 1} more)` : first.name;
     setWsFile(files.length > 1 ? `${first.name} +${files.length - 1}` : first.name);
     $('auto-meta').textContent = `${info.label} · ${fmtBytes(files.reduce((s, f) => s + f.size, 0))}`;
-    $('auto-ico').textContent = ({ pdf: 'PDF', image: 'IMG', heic: 'HEIC', audio: 'AUD', video: 'VID' })[info.kind] || 'BIN';
+    $('auto-ico').textContent = ({ pdf: 'PDF', image: 'IMG', heic: 'HEIC', audio: 'AUD', video: 'VID', dicom: 'DCM' })[info.kind] || 'BIN';
     outcomes.innerHTML = '';
     resetPanels();
     const add = (...a) => outcomes.appendChild(outcomeBtn(...a));
@@ -2595,6 +2602,15 @@ const AutoTool = (() => {
         () => { TranscodeTool.setVideoName(first.name); showTool('transcode'); });
       add('🎵', T('Extract audio → WAV'), T('Decode the audio track in-browser and export it as WAV.'),
         () => { TranscodeTool.openAudio(first); showTool('transcode'); });
+    } else if(info.kind === 'dicom'){
+      // A study lands here often enough — dragged out of a burned CD, or saved
+      // from a viewer — and nothing on this screen reads one. The fleet's editor
+      // does, so the file goes there with the click rather than the user being
+      // pointed at a link and an empty dropzone.
+      add('🩻', T('Edit DICOM tags'), T('Send this file to dicom.carino.systems — tag editing, de-identification and a look at the image.'),
+        () => sendTo(DICOM_URL, first));
+      add('🔬', T('Inspect metadata'), T('Send this file to metadata.carino.systems — magic-byte analysis, metadata extraction and editing.'),
+        () => sendTo(META_URL, first));
     } else {
       const bytes = new Uint8Array(await first.slice(0, 16).arrayBuffer());
       const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
@@ -2604,7 +2620,7 @@ const AutoTool = (() => {
       box.textContent = `${T('No tool here handles this type. First bytes:')} ${hex}`;
       outcomes.appendChild(box);
       add('🔬', T('Inspect metadata'), T('Send this file to metadata.carino.systems — magic-byte analysis, metadata extraction and editing.'),
-        () => sendToMetadata(first));
+        () => sendTo(META_URL, first));
     }
     outcomes.querySelectorAll('.oc-card').forEach((c, i) => c.querySelector('.oc-n').textContent = i + 1);
     result.classList.remove('hidden');
