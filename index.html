@@ -2466,6 +2466,23 @@ const AutoTool = (() => {
   const pdfBox = $('auto-pdf'), viewActs = $('auto-view-acts');
   let previewURL = null, convFiles = [], hasPdf = false;
 
+  /* The one outcome this screen cannot finish itself, and the only one that
+     used to dead-end: it opened the inspector on an empty dropzone and left
+     you to find the file again.
+
+     The file goes with it now, over the Carino Bridge (carino-bridge.js): the
+     inspector answers when its listener exists and the File is posted to it,
+     structured clone and all, so nothing is uploaded and nothing is
+     re-encoded — it never leaves the browser.
+
+     If the exchange fails the inspector is open regardless and the file can
+     still be dropped by hand, so this fails quietly rather than blocking. */
+  const META_URL = 'https://metadata.carino.systems/';
+  function sendToMetadata(file){
+    if(!window.CarinoBridge){ window.open(META_URL, '_blank', 'noopener'); return; }
+    CarinoBridge.send(META_URL, file, { timeout: 30000 }).catch(() => {});
+  }
+
   function outcomeBtn(icon, title, desc, fn){
     const b = document.createElement('button');
     b.className = 'oc-card';
@@ -2586,8 +2603,8 @@ const AutoTool = (() => {
       box.style.gridColumn = '1 / -1';
       box.textContent = `${T('No tool here handles this type. First bytes:')} ${hex}`;
       outcomes.appendChild(box);
-      add('🔬', T('Inspect metadata'), T('Open metadata.carino.systems — magic-byte analysis, metadata extraction and editing for any file.'),
-        () => window.open('https://metadata.carino.systems', '_blank', 'noopener'));
+      add('🔬', T('Inspect metadata'), T('Send this file to metadata.carino.systems — magic-byte analysis, metadata extraction and editing.'),
+        () => sendToMetadata(first));
     }
     outcomes.querySelectorAll('.oc-card').forEach((c, i) => c.querySelector('.oc-n').textContent = i + 1);
     result.classList.remove('hidden');
@@ -2727,6 +2744,7 @@ window.MediaTools = {
 </script>
 
 <script src="vendor/tesseract/tesseract.min.js" defer></script>
+<script src="carino-bridge.js" defer></script>
 <script src="carino-navbar.js" data-app="Media" defer></script>
 <script src="carino-lang.js" defer></script>
 <script src="i18n.js" defer></script>
