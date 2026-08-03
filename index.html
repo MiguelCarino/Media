@@ -228,28 +228,10 @@
 
     .hidden { display: none !important; }
 
-    /* ─── OCR specifics ───────────────────────────────────────── */
-    .preview-box {
-      height: clamp(140px, 26vh, 320px); display: flex; align-items: center; justify-content: center;
-      padding: 10px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px;
-    }
-    #ocr-preview { max-width: 100%; max-height: 100%; object-fit: contain; display: none; border-radius: 6px; background: #000; }
-    #ocr-preview.inverted { filter: invert(1) hue-rotate(180deg); }
-    #ocr-output {
-      flex: 1; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-elev);
-      padding: 13px; font-family: var(--mono); font-size: 13.5px; line-height: 1.6;
-      white-space: pre-wrap; overflow: auto; min-height: clamp(160px, 30vh, 520px);
-      overflow-wrap: anywhere;
-    }
-    .overlay {
-      position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
-      background: rgba(5,5,5,0.85); backdrop-filter: blur(5px); z-index: 10; border-radius: var(--radius);
-    }
-    .overlay-card {
-      width: min(400px, 92%); background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 18px; text-align: center;
-    }
-    .relative { position: relative; }
+    /* Inverting the view flips the render you are actually looking at, since
+       the file screen's preview is the image the recogniser reads. */
+    #auto-thumb.inverted { filter: invert(1) hue-rotate(180deg); }
+
 
     /* ─── Signature specifics (single-screen layout) ──────────── */
     .sig-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 280px; gap: 12px; }
@@ -309,7 +291,13 @@
 
     /* ─── Detect tab ──────────────────────────────────────────── */
     .auto-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 14px; width: 100%; max-width: 860px; margin: 0 auto; overflow-y: auto; }
-    .auto-drop { padding: 38px 20px; flex-shrink: 0; }
+    .auto-drop { padding: 38px 20px; flex-shrink: 0; transition: padding 0.15s; }
+    /* Once a file is loaded the dropzone stops competing with the result for
+       vertical space — it still takes a drop or another paste. */
+    .auto-stage.loaded .auto-drop { padding: 12px 20px; }
+    .auto-stage.loaded .auto-drop .d-ico,
+    .auto-stage.loaded .auto-drop .d-sub { display: none; }
+    .auto-stage.loaded .auto-drop .d-title { font-size: 0.8rem; }
     .auto-outcomes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
     .oc-card {
       text-align: left; background: var(--bg-card); border: 1px solid var(--border);
@@ -320,6 +308,98 @@
     .oc-card .oc-t { font-weight: 800; font-size: 0.88rem; display: flex; gap: 8px; align-items: center; }
     .oc-card .oc-d { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; line-height: 1.45; }
     .auto-hex { font-family: var(--mono); font-size: 0.7rem; color: var(--text-sec); background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    /* Each outcome answers to its ordinal, so a paste can be resolved from the
+       keyboard without reaching for the mouse. */
+    .oc-card .oc-n {
+      margin-left: auto; font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+      color: var(--accent); background: var(--accent-faint); border: 1px solid var(--accent-dim);
+      border-radius: 4px; padding: 1px 6px; line-height: 1.5;
+    }
+    /* What you pasted, shown as itself rather than as a file name. */
+    .auto-preview {
+      display: grid; place-items: center; background: var(--bg-elev);
+      border: 1px solid var(--border); border-radius: 8px; padding: 8px; min-height: 0;
+    }
+    /* Capped against the viewport too, so on a laptop the render does not push
+       the extracted text below the fold. */
+    .auto-preview img { max-width: 100%; max-height: min(240px, 26vh); object-fit: contain; border-radius: 4px; display: block; }
+    /* Inline OCR result — the payoff of running it on paste. */
+    .auto-ocr { display: flex; flex-direction: column; gap: 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+    .auto-ocr .ao-head { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.84rem; }
+    .auto-ocr .ao-head .badge { margin-left: auto; }
+    .auto-ocr pre {
+      margin: 0; max-height: 190px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+      font-family: var(--mono); font-size: 0.74rem; line-height: 1.5; color: var(--text-sec);
+    }
+    .auto-ocr .ao-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+    /* Conversion settings, inline: the single-image case never needs the batch
+       screen, so the encoder's controls come to the file instead. */
+    .auto-conv .ac-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end; }
+    /* The page renderer's groups are different heights (the DPI one carries a
+       segment and a field), so bottom-aligning them just looks ragged. */
+    #auto-pdf .ac-row { align-items: start; }
+    .auto-conv .seg label { padding: 5px 8px; font-size: 0.74rem; }
+    .auto-conv input[type="number"] { padding: 6px 9px; }
+    .auto-conv .cg { gap: 5px; }
+    .auto-conv .badge:empty { display: none; }
+    /* The file on one side, everything you can do to it on the other. Below the
+       breakpoint the two columns become one and the order stays: see it, read
+       it, convert it, then the outcomes. */
+    .auto-main { display: grid; gap: 12px; }
+    .auto-view { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .auto-work { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .view-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+    /* The recogniser's own controls, on the file screen. */
+    .ocr-ctl { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .ocr-ctl select { width: auto; flex: 1 1 130px; min-width: 120px; padding: 6px 9px; font-size: 0.78rem; }
+    /* Rendered pages: a scrolling strip beside the controls, not a page-long grid. */
+    #pdf-grid { max-height: min(520px, 62vh); overflow-y: auto; }
+    @media (min-width: 1000px) {
+      .auto-stage.loaded { max-width: 1180px; }
+      .auto-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: start; }
+      /* With a column of its own the render can afford to be big. */
+      .auto-preview img { max-height: min(460px, 56vh); }
+    }
+
+    /* ─── small screens ───────────────────────────────────────
+       The shell is a fixed-height flex column, so mobile needs three things:
+       a viewport unit that survives the collapsing address bar, no centred
+       overflow (a centred flex column clips its own top when it overflows,
+       and the clipped part cannot be scrolled to), and controls big enough
+       to hit with a thumb. */
+    @supports (height: 100dvh) { html, body { height: 100dvh; } }
+    .auto-stage.loaded { justify-content: flex-start; }
+
+    @media (max-width: 700px) {
+      main { padding: 10px 12px; }
+      .tool-head { margin-bottom: 10px; }
+      .tool-head h1 { font-size: 1.1rem; }
+      .tool-head p { font-size: 0.8rem; }
+      .auto-drop { padding: 22px 14px; }
+      .auto-stage { gap: 10px; }
+      .auto-preview { padding: 6px; }
+      .auto-preview img { max-height: min(200px, 30vh); }
+      .auto-ocr pre { max-height: 150px; font-size: 0.78rem; }
+      .auto-ocr, .auto-conv { padding: 11px 12px; }
+      .ws-file { max-width: 22ch; }
+      .oc-card { padding: 11px 12px; }
+      /* 16px is the threshold under which iOS zooms the page on focus. */
+      input[type="number"], input[type="text"], select { font-size: 16px; }
+    }
+
+    /* Touch targets. Stated as a minimum height rather than as padding so the
+       compact overrides elsewhere (which are more specific, and would win) can
+       not shrink a control below the thumb-sized floor. */
+    @media (pointer: coarse) {
+      .btn, .btn-sm, .seg label, .auto-conv .seg label {
+        min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+      }
+      .btn-sm { font-size: 0.78rem; }
+      input[type="number"], input[type="text"], select { min-height: 44px; }
+      input[type="range"] { height: 44px; }
+      .file-chip .f-x { min-width: 44px; min-height: 44px; font-size: 1.05rem; }
+      .oc-card, .drop { -webkit-tap-highlight-color: transparent; }
+    }
 
     /* ─── fit-on-screen: columns scroll internally, page never ── */
     .split, .split-even { align-items: stretch; flex: 1 1 auto; min-height: 0; }
@@ -381,104 +461,24 @@
           </div>
           <button class="f-x" id="auto-clear" title="Clear">✕</button>
         </div>
-        <div class="auto-outcomes" id="auto-outcomes"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ 1 · PDF → IMAGES ══════════════════════════════════════ -->
-  <section class="tool" id="tool-pdf">
-        <div class="split">
-      <div class="panel">
-        <div class="panel-head"><span class="panel-title" data-i18n>Input & Settings</span><span class="badge" id="pdf-state">Idle</span></div>
-        <div class="panel-body">
-          <div id="pdf-drop" class="drop" tabindex="0" role="button" aria-label="Drop a PDF or click to browse">
-            <div class="d-ico">📄</div>
-            <div class="d-title" data-i18n>Drop PDF here</div>
-            <div class="d-sub" data-i18n>or click to browse</div>
+        <!-- The file on the left, what you can do with it on the right; the
+             outcomes that lead somewhere else sit under both. Which panels
+             appear is decided by the file type, so one screen serves them all. -->
+        <div class="auto-main">
+        <div class="auto-view">
+          <div class="auto-preview hidden" id="auto-preview"><img id="auto-thumb" alt=""></div>
+          <div class="view-acts hidden" id="auto-view-acts">
+            <button id="av-ocr" class="btn btn-sm" type="button">🔍 <span data-i18n>Extract text</span></button>
           </div>
-          <div id="pdf-filechip" class="file-chip hidden">
-            <div class="f-ico">PDF</div>
-            <div class="f-info">
-              <div class="f-name" id="pdf-fname">document.pdf</div>
-              <div class="f-meta" id="pdf-fmeta">0 MB</div>
-            </div>
-            <button class="f-x" id="pdf-clear" title="Remove">✕</button>
-          </div>
-          <input type="file" id="pdf-input" accept="application/pdf" hidden>
-
-          <div class="cg">
-            <span class="cg-label" data-i18n>Format</span>
-            <div class="seg">
-              <input type="radio" name="pdf-fmt" id="pdf-fmt-png" value="image/png" checked><label for="pdf-fmt-png">PNG</label>
-              <input type="radio" name="pdf-fmt" id="pdf-fmt-jpg" value="image/jpeg"><label for="pdf-fmt-jpg">JPEG</label>
-              <input type="radio" name="pdf-fmt" id="pdf-fmt-webp" value="image/webp"><label for="pdf-fmt-webp">WebP</label>
-            </div>
-          </div>
-
-          <div class="cg">
-            <span class="cg-label" data-i18n>Resolution (DPI)</span>
-            <div class="seg" style="margin-bottom:6px">
-              <input type="radio" name="pdf-dpi" id="pdf-dpi-72"><label for="pdf-dpi-72" data-i18n>Screen 72</label>
-              <input type="radio" name="pdf-dpi" id="pdf-dpi-150" checked><label for="pdf-dpi-150" data-i18n>Read 150</label>
-              <input type="radio" name="pdf-dpi" id="pdf-dpi-300"><label for="pdf-dpi-300" data-i18n>Print 300</label>
-            </div>
-            <input type="number" id="pdf-scale" value="150" min="36" max="600" inputmode="numeric">
-          </div>
-
-          <div class="cg">
-            <span class="cg-label"><span data-i18n>Pages</span> <span class="val" style="text-transform:none" data-i18n>e.g. 1, 3-5 · empty = all</span></span>
-            <input type="text" id="pdf-range" placeholder="All pages">
-          </div>
-
-          <div class="cg hidden" id="pdf-quality-group">
-            <span class="cg-label"><span data-i18n>Quality</span> <span class="val" id="pdf-quality-val">90%</span></span>
-            <input type="range" id="pdf-quality" value="90" min="10" max="100">
-          </div>
-
-          <div class="cg" id="pdf-bg-group">
-            <span class="cg-label" data-i18n>Background</span>
-            <div class="seg">
-              <input type="radio" name="pdf-bg" id="pdf-bg-trans" value="transparent"><label for="pdf-bg-trans" data-i18n>Transparent</label>
-              <input type="radio" name="pdf-bg" id="pdf-bg-white" value="white" checked><label for="pdf-bg-white" data-i18n>White</label>
-            </div>
-          </div>
-
-          <div class="btn-row">
-            <button id="pdf-convert" class="btn btn-gold grow" disabled data-i18n>Convert PDF</button>
-            <button id="pdf-zip" class="btn grow" disabled data-i18n>Download ZIP</button>
-          </div>
-          <div class="bar"><div id="pdf-bar"></div></div>
-          <div class="status-line" id="pdf-status"></div>
+          <div id="pdf-grid" class="result-grid hidden"></div>
         </div>
-      </div>
-
-      <div>
-        <div id="pdf-grid" class="result-grid">
-          <div class="empty-state" id="pdf-empty" style="grid-column:1/-1">
-            <h3 data-i18n>No pages yet</h3>
-            <p data-i18n>Converted pages will appear here.</p>
+        <div class="auto-work">
+        <div class="auto-ocr hidden" id="auto-ocr">
+          <div class="ao-head">
+            <span>🔍</span><span data-i18n>Extracted text</span>
+            <span class="badge" id="ao-state">…</span>
           </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ 2 · OCR ═══════════════════════════════════════════════ -->
-  <section class="tool" id="tool-ocr">
-        <div class="split-even">
-      <div class="panel relative">
-        <div class="panel-head"><span class="panel-title" data-i18n>Input</span><span class="badge" id="ocr-state">Idle</span></div>
-        <div class="panel-body">
-          <div class="drop" id="ocr-drop" tabindex="0" role="button" aria-label="Drop image or click to upload">
-            <div class="d-ico">🖼️</div>
-            <div class="d-title" data-i18n>Drop image here or click to upload</div>
-            <div class="d-sub" data-i18n>JPG, PNG, WebP, HEIC · you can also paste (Ctrl+V)</div>
-          </div>
-          <input id="ocr-picker" type="file" accept="image/*,.heic,.heif" hidden>
-
-          <div class="cg">
-            <span class="cg-label" data-i18n>Language</span>
+          <div class="ocr-ctl">
             <select id="ocr-lang" title="OCR language">
               <option value="eng" selected>English</option>
               <option value="spa">Español</option>
@@ -487,46 +487,95 @@
               <option value="eng+por">English + Português</option>
               <option value="spa+por">Español + Português</option>
             </select>
-          </div>
-
-          <div class="btn-row">
             <button id="ocr-invert-view" class="btn btn-sm" type="button" data-i18n>Invert view 🌓</button>
             <button id="ocr-invert" class="btn btn-sm" type="button" data-i18n>Invert for OCR ⚡</button>
             <button id="ocr-rotate" class="btn btn-sm" type="button" data-i18n>Rotate ⤾</button>
-            <button id="ocr-reset" class="btn btn-sm" type="button" data-i18n>Reset</button>
+            <button id="ocr-run" class="btn btn-sm" type="button" data-i18n>Run OCR</button>
           </div>
-          <div class="hint"><span data-i18n>For white text on a dark background, use</span> <b data-i18n>Invert for OCR</b>.</div>
-
-          <div class="preview-box">
-            <img id="ocr-preview" alt="Document preview">
-            <div id="ocr-placeholder" class="hint" data-i18n>Upload an image to see a preview.</div>
-          </div>
-
-          <button id="ocr-run" class="btn btn-gold" type="button" disabled data-i18n>Run OCR</button>
-        </div>
-
-        <div class="overlay" id="ocr-loader">
-          <div class="overlay-card">
-            <div style="font-size:2rem;">⚡</div>
-            <div id="ocr-loadtext" style="margin-top:6px;font-weight:800;">Preparing OCR engine…</div>
-            <div class="bar" style="margin-top:10px"><div id="ocr-bar"></div></div>
-            <div class="hint" style="margin-top:8px;" data-i18n>First run compiles the local WASM engine — everything stays on this device.</div>
+          <div class="bar"><div id="ao-bar"></div></div>
+          <pre id="ao-text"></pre>
+          <div class="ao-acts">
+            <button id="ao-copy" class="btn btn-gold btn-sm" type="button" data-i18n>Copy</button>
+            <button id="ocr-download" class="btn btn-sm" type="button" data-i18n>Download .txt</button>
           </div>
         </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head">
-          <span class="panel-title" data-i18n>Extracted Text</span>
-          <span class="badge" id="ocr-acc"><span data-i18n>Accuracy:</span> <span id="ocr-conf">0%</span></span>
-        </div>
-        <div class="panel-body">
-          <div id="ocr-output">Paste an image, drop it, or upload to begin…</div>
-          <div class="btn-row">
-            <button id="ocr-copy" class="btn btn-gold grow" type="button" data-i18n>Copy</button>
-            <button id="ocr-download" class="btn grow" type="button" data-i18n>Download .txt</button>
+        <div class="auto-ocr auto-conv hidden" id="auto-conv">
+          <div class="ao-head">
+            <span>🖼️</span><span data-i18n>Convert</span>
+            <span class="badge" id="ac-state"></span>
+          </div>
+          <div class="ac-row">
+            <div class="cg">
+              <span class="cg-label" data-i18n>Output format</span>
+              <div class="seg">
+                <input type="radio" name="ac-fmt" id="ac-fmt-png" value="image/png"><label for="ac-fmt-png">PNG</label>
+                <input type="radio" name="ac-fmt" id="ac-fmt-jpg" value="image/jpeg"><label for="ac-fmt-jpg">JPEG</label>
+                <input type="radio" name="ac-fmt" id="ac-fmt-webp" value="image/webp" checked><label for="ac-fmt-webp">WebP</label>
+              </div>
+            </div>
+            <div class="cg" id="ac-quality-group">
+              <span class="cg-label"><span data-i18n>Quality</span> <span class="val" id="ac-quality-val">85%</span></span>
+              <input type="range" id="ac-quality" value="85" min="10" max="100">
+            </div>
+            <div class="cg">
+              <span class="cg-label"><span data-i18n>Max dimension (px)</span></span>
+              <input type="number" id="ac-maxdim" min="16" max="16384" placeholder="e.g. 1920" inputmode="numeric">
+            </div>
+          </div>
+          <div class="ao-acts">
+            <button id="ac-go" class="btn btn-gold btn-sm" type="button" data-i18n>Convert &amp; download</button>
+            <button id="ac-more" class="btn btn-sm" type="button" data-i18n>Batch converter</button>
           </div>
         </div>
+        <div class="auto-ocr auto-conv hidden" id="auto-pdf">
+          <div class="ao-head">
+            <span>📄</span><span data-i18n>Pages to images</span>
+            <span class="badge" id="pdf-state">Idle</span>
+          </div>
+          <div class="ac-row">
+            <div class="cg">
+              <span class="cg-label" data-i18n>Format</span>
+              <div class="seg">
+                <input type="radio" name="pdf-fmt" id="pdf-fmt-png" value="image/png" checked><label for="pdf-fmt-png">PNG</label>
+                <input type="radio" name="pdf-fmt" id="pdf-fmt-jpg" value="image/jpeg"><label for="pdf-fmt-jpg">JPEG</label>
+                <input type="radio" name="pdf-fmt" id="pdf-fmt-webp" value="image/webp"><label for="pdf-fmt-webp">WebP</label>
+              </div>
+            </div>
+            <div class="cg">
+              <span class="cg-label" data-i18n>Resolution (DPI)</span>
+              <div class="seg" style="margin-bottom:6px">
+                <input type="radio" name="pdf-dpi" id="pdf-dpi-72"><label for="pdf-dpi-72" data-i18n>Screen 72</label>
+                <input type="radio" name="pdf-dpi" id="pdf-dpi-150" checked><label for="pdf-dpi-150" data-i18n>Read 150</label>
+                <input type="radio" name="pdf-dpi" id="pdf-dpi-300"><label for="pdf-dpi-300" data-i18n>Print 300</label>
+              </div>
+              <input type="number" id="pdf-scale" value="150" min="36" max="600" inputmode="numeric">
+            </div>
+            <div class="cg">
+              <span class="cg-label"><span data-i18n>Pages</span> <span class="val" style="text-transform:none" data-i18n>e.g. 1, 3-5 · empty = all</span></span>
+              <input type="text" id="pdf-range" placeholder="All pages">
+            </div>
+            <div class="cg hidden" id="pdf-quality-group">
+              <span class="cg-label"><span data-i18n>Quality</span> <span class="val" id="pdf-quality-val">90%</span></span>
+              <input type="range" id="pdf-quality" value="90" min="10" max="100">
+            </div>
+            <div class="cg" id="pdf-bg-group">
+              <span class="cg-label" data-i18n>Background</span>
+              <div class="seg">
+                <input type="radio" name="pdf-bg" id="pdf-bg-trans" value="transparent"><label for="pdf-bg-trans" data-i18n>Transparent</label>
+                <input type="radio" name="pdf-bg" id="pdf-bg-white" value="white" checked><label for="pdf-bg-white" data-i18n>White</label>
+              </div>
+            </div>
+          </div>
+          <div class="ao-acts">
+            <button id="pdf-convert" class="btn btn-gold btn-sm" type="button" disabled data-i18n>Convert PDF</button>
+            <button id="pdf-zip" class="btn btn-sm" type="button" disabled data-i18n>Download ZIP</button>
+          </div>
+          <div class="bar"><div id="pdf-bar"></div></div>
+          <div class="status-line" id="pdf-status"></div>
+        </div>
+        </div>
+        </div>
+        <div class="auto-outcomes" id="auto-outcomes"></div>
       </div>
     </div>
   </section>
@@ -797,8 +846,10 @@ const fmtBytes = (n) => n < 1024 ? n + ' B' : n < 1048576 ? (n/1024).toFixed(1) 
 const T = (s) => (window.CarinoI18N && window.CarinoI18N.t) ? window.CarinoI18N.t(s) : s;
 
 /* ─── workspaces: no tabs — the received file decides where you go ─── */
-const TOOLS = ['auto','pdf','ocr','signature','images','transcode'];
-const TOOL_TITLES = { pdf: 'PDF → Images', ocr: 'OCR', signature: 'Signature Cleanup', images: 'Image Converter', transcode: 'Transcode' };
+/* PDF → Images and OCR are not destinations any more: both run on the file
+   screen itself, so only the workspaces you actually leave for are listed. */
+const TOOLS = ['auto','signature','images','transcode'];
+const TOOL_TITLES = { signature: 'Signature Cleanup', images: 'Image Converter', transcode: 'Transcode' };
 let wsFileName = '';
 function setWsFile(name){
   wsFileName = name || '';
@@ -991,8 +1042,9 @@ const PdfTool = (() => {
   let pdfjsLib = null;
   let pdfBytes = null, pdfName = 'document', results = [];
 
-  const drop = $('pdf-drop'), input = $('pdf-input'), chip = $('pdf-filechip');
-  const grid = $('pdf-grid'), empty = $('pdf-empty');
+  // The file screen owns the dropzone and the file chip now; this module only
+  // owns the settings, the render loop and the page grid it fills.
+  const grid = $('pdf-grid');
   const btnConvert = $('pdf-convert'), btnZip = $('pdf-zip');
   const bar = $('pdf-bar'), statusEl = $('pdf-status'), stateEl = $('pdf-state');
 
@@ -1023,17 +1075,33 @@ const PdfTool = (() => {
   function resetResults(){
     results = [];
     grid.querySelectorAll('.rcard').forEach(c => c.remove());
-    empty.classList.remove('hidden');
+    grid.classList.add('hidden');
     btnZip.disabled = true;
     btnZip.textContent = T('Download ZIP');
   }
 
+  /* One page to a blob — the render loop and the "show me page 1" preview both
+     go through here so a previewed page and an exported one are the same
+     pixels at the same settings. */
+  async function renderPage(pdf, num, dpi, format, bg, quality){
+    const page = await pdf.getPage(num);
+    const viewport = page.getViewport({ scale: dpi / 72 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext('2d');
+    if(bg === 'white' || format === 'image/jpeg'){
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const blob = await new Promise(r => canvas.toBlob(r, format, quality));
+    return { blob, w: canvas.width, h: canvas.height,
+             url: canvas.toDataURL(format, quality) };
+  }
+
   async function handleFile(file){
     if(!file || (file.type && file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf'))) return;
-    $('pdf-fname').textContent = file.name;
-    $('pdf-fmeta').textContent = fmtBytes(file.size);
-    drop.classList.add('hidden');
-    chip.classList.remove('hidden');
     pdfBytes = new Uint8Array(await file.arrayBuffer());
     pdfName = file.name.replace(/\.[^.]+$/, '');
     setWsFile(file.name);
@@ -1041,20 +1109,20 @@ const PdfTool = (() => {
     stateEl.textContent = T('Loaded');
     statusEl.textContent = T('PDF loaded — ready to convert.');
     resetResults();
+    // A PDF should look like a file, not like a filename: page 1 is rendered
+    // straight away at screen resolution so the screen has something to show
+    // and something to hand to OCR.
+    try {
+      const p = await lib();
+      const pdf = await p.getDocument({ data: pdfBytes.slice() }).promise;
+      const first = await renderPage(pdf, 1, 96, 'image/png', 'white', 1);
+      statusEl.textContent = `${pdf.numPages} ${T('page(s)')} — ${T('ready to convert.')}`;
+      return { pageCount: pdf.numPages, preview: first };
+    } catch(e){
+      statusEl.textContent = T('Error') + ': ' + e.message;
+      return null;
+    }
   }
-
-  wireDrop(drop, input, files => handleFile(files[0]));
-
-  $('pdf-clear').addEventListener('click', () => {
-    pdfBytes = null;
-    drop.classList.remove('hidden');
-    chip.classList.add('hidden');
-    btnConvert.disabled = true;
-    stateEl.textContent = T('Idle');
-    statusEl.textContent = '';
-    bar.style.width = '0%';
-    resetResults();
-  });
 
   function parseRange(str, total){
     if(!str.trim()) return Array.from({length: total}, (_, i) => i + 1);
@@ -1078,13 +1146,21 @@ const PdfTool = (() => {
     const div = document.createElement('div');
     div.className = 'rcard';
     div.innerHTML = `
-      <div class="thumb"><img alt="Page ${num}"></div>
+      <div class="thumb"><img alt="${T('Page')} ${num}"></div>
       <div class="rbody">
         <div class="rmeta"><span class="chip">${T('Page')} ${num}</span><span>${w}×${h} · ${fmtBytes(blob.size)}</span></div>
-        <button class="btn btn-sm">${T('Download')}</button>
+        <div class="btn-row">
+          <button class="btn btn-sm grow ocr-btn">🔍 ${T('Extract text')}</button>
+          <button class="btn btn-sm dl-btn">${T('Download')}</button>
+        </div>
       </div>`;
     div.querySelector('img').src = url;
-    div.querySelector('button').addEventListener('click', () => downloadBlob(blob, `${pdfName}-page${num}.${ext}`));
+    div.querySelector('.dl-btn').addEventListener('click', () => downloadBlob(blob, `${pdfName}-page${num}.${ext}`));
+    // Any rendered page can be handed to the recogniser on the same screen —
+    // this is what used to mean "go to PDF → Images, download, then upload it
+    // to OCR".
+    div.querySelector('.ocr-btn').addEventListener('click', () =>
+      AutoTool.ocrPage(new File([blob], `${pdfName}-page${num}.${ext}`, { type: blob.type }), num));
     grid.appendChild(div);
   }
 
@@ -1092,7 +1168,7 @@ const PdfTool = (() => {
     if(!pdfBytes) return;
     btnConvert.disabled = true; btnZip.disabled = true;
     resetResults();
-    empty.classList.add('hidden');
+    grid.classList.remove('hidden');
     bar.style.width = '0%';
     stateEl.textContent = T('Working');
     try {
@@ -1106,20 +1182,9 @@ const PdfTool = (() => {
       let done = 0;
       for(const num of pages){
         statusEl.textContent = `${T('Rendering page')} ${num} / ${pdf.numPages}…`;
-        const page = await pdf.getPage(num);
-        const viewport = page.getViewport({ scale: dpi / 72 });
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.ceil(viewport.width);
-        canvas.height = Math.ceil(viewport.height);
-        const ctx = canvas.getContext('2d');
-        if(bg === 'white' || format === 'image/jpeg'){
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        const blob = await new Promise(r => canvas.toBlob(r, format, quality));
+        const { blob, url, w, h } = await renderPage(pdf, num, dpi, format, bg, quality);
         const ext = format.split('/')[1];
-        addCard(num, canvas.toDataURL(format, quality), blob, ext, canvas.width, canvas.height);
+        addCard(num, url, blob, ext, w, h);
         results.push({ num, blob, ext });
         done++;
         bar.style.width = (done / pages.length * 100) + '%';
@@ -1169,10 +1234,16 @@ const OcrTool = (() => {
   let currentFile = null, activeURL = null;
   let invertForOCR = false, rotation = 0;
   let jobId = 0, busy = false, lastLang = 'eng';
+  // Runs are serialised on this chain so a second image queued while the first
+  // is still recognising waits its turn instead of being dropped.
+  let runChain = Promise.resolve();
 
-  const preview = $('ocr-preview'), placeholder = $('ocr-placeholder');
-  const output = $('ocr-output'), loader = $('ocr-loader'), loadText = $('ocr-loadtext'), bar = $('ocr-bar');
-  const stateEl = $('ocr-state'), accEl = $('ocr-acc'), confEl = $('ocr-conf');
+  /* There is no OCR tab any more: the file screen IS the OCR screen, so this
+     module writes straight into its panel. The image it recognises is the same
+     <img> the screen renders, which is why "Invert view" flips what you are
+     actually looking at. */
+  const preview = $('auto-thumb');
+  const output = $('ao-text'), bar = $('ao-bar'), stateEl = $('ao-state');
   const runBtn = $('ocr-run'), langSel = $('ocr-lang');
 
   const setState = t => stateEl.textContent = t;
@@ -1180,74 +1251,69 @@ const OcrTool = (() => {
     busy = v;
     const dis = v || !currentFile;
     runBtn.disabled = dis;
-    ['ocr-invert','ocr-rotate','ocr-invert-view'].forEach(id => $(id).disabled = dis);
+    ['ocr-invert','ocr-rotate','ocr-invert-view','ocr-download'].forEach(id => $(id).disabled = dis);
     langSel.disabled = v;
   }
-  function setLoader(show){
-    loader.style.display = show ? 'flex' : 'none';
-    if(!show){ loadText.textContent = T('Preparing OCR engine…'); bar.style.width = '0%'; }
-  }
-  function setConfidence(pct){
-    const p = Math.max(0, Math.min(100, pct | 0));
-    confEl.textContent = p + '%';
-    accEl.classList.remove('low','med','high');
-    accEl.classList.add(p < 55 ? 'low' : p < 80 ? 'med' : 'high');
-  }
+  function setProgress(pct){ bar.style.width = Math.max(0, Math.min(100, pct | 0)) + '%'; }
   function cleanupURL(){ if(activeURL){ URL.revokeObjectURL(activeURL); activeURL = null; } }
 
   function resetUI(){
     jobId++;
     cleanupURL();
     currentFile = null; invertForOCR = false; rotation = 0;
-    output.textContent = T('Paste an image, drop it, or upload to begin…');
-    setConfidence(0); setState(T('Idle'));
-    preview.style.display = 'none';
+    output.textContent = '';
+    setProgress(0); setState('…');
     preview.classList.remove('inverted');
-    placeholder.style.display = 'block';
     $('ocr-invert').textContent = T('Invert for OCR ⚡');
     $('ocr-rotate').textContent = T('Rotate ⤾');
     setBusy(false);
   }
 
   async function open(file){
-    if(!file || !isImageLike(file)) return;
+    if(!file || !isImageLike(file)) return false;
     try { file = await normalizeImageFile(file); }
-    catch(err){ output.textContent = T('Error') + ': ' + (err && err.message || err); setState(T('Error')); return; }
-    loadFile(file);
+    catch(err){ output.textContent = T('Error') + ': ' + (err && err.message || err); setState(T('Error')); return false; }
+    return loadFile(file);
   }
 
   function loadFile(file){
-    if(!file || !file.type || !file.type.startsWith('image/')) return;
+    if(!file || !file.type || !file.type.startsWith('image/')) return false;
+    jobId++;   // a new image supersedes anything still recognising
     currentFile = file;
     setWsFile(file.name);
     cleanupURL();
     activeURL = URL.createObjectURL(file);
     preview.src = activeURL;
-    preview.style.display = 'block';
-    placeholder.style.display = 'none';
+    preview.classList.remove('inverted');
+    rotation = 0; invertForOCR = false;
+    $('ocr-invert').textContent = T('Invert for OCR ⚡');
+    $('ocr-rotate').textContent = T('Rotate ⤾');
     output.textContent = '';
-    setConfidence(0); setState(T('Ready')); setBusy(false);
+    setProgress(0); setState(T('Ready')); setBusy(false);
     runBtn.disabled = false;
+    return true;
   }
 
-  async function ensureWorker(){
+  // keepBusy: called from inside a run, which owns the progress bar and the
+  // busy flag for its whole duration — handing them back here used to blank the
+  // bar for the entire recognition pass.
+  async function ensureWorker(keepBusy){
     if(worker) return worker;
-    setLoader(true); setBusy(true);
+    setBusy(true);
     setState(engineLoaded ? T('Switching language') : T('Loading engine'));
     worker = await Tesseract.createWorker(langSel.value, 1, Object.assign({
       logger: m => {
-        if(m.status === 'recognizing text'){
-          const pct = Math.round((m.progress || 0) * 100);
-          loadText.textContent = `${T('Recognizing…')} ${pct}%`;
-          bar.style.width = pct + '%';
-        } else if(m.status){
-          loadText.textContent = m.status;
-        }
+        const pct = Math.round((m.progress || 0) * 100);
+        setProgress(pct);
+        setState(m.status === 'recognizing text'
+          ? `${T('Recognizing…')} ${pct}%` : (m.status || T('Loading engine')));
       }
     }, TESS_OPTS));
     engineLoaded = true;
-    setLoader(false); setBusy(false);
-    setState(currentFile ? T('Ready') : T('Idle'));
+    if(!keepBusy){
+      setBusy(false);
+      setState(currentFile ? T('Ready') : '…');
+    }
     return worker;
   }
 
@@ -1298,31 +1364,48 @@ const OcrTool = (() => {
     });
   }
 
-  async function runOCR(){
-    if(!currentFile || busy) return;
-    const myJob = ++jobId;
-    setBusy(true); setLoader(true); setState(T('Running OCR'));
+  function runOCR(){
+    if(!currentFile) return Promise.resolve(null);
+    const job = ++jobId, file = currentFile;
+    const run = () => doOCR(job, file);
+    runChain = runChain.then(run, run);   // queue behind any run still in flight
+    return runChain;
+  }
+
+  async function doOCR(job, file){
+    if(!file || job !== jobId) return null;   // superseded while it waited its turn
+    setBusy(true); setState(T('Running OCR'));
     output.textContent = '';
-    setConfidence(0);
+    setProgress(0);
     try {
-      const w = await ensureWorker();
-      const blob = await preprocess(currentFile);
-      if(myJob !== jobId) return;
+      const w = await ensureWorker(true);
+      const blob = await preprocess(file);
+      if(job !== jobId) return null;
       const { data } = await w.recognize(blob);
-      if(myJob !== jobId) return;
+      if(job !== jobId) return null;
       const text = (data && data.text || '').trim();
       output.textContent = text || T('No text found in this image.');
-      setConfidence(Math.round(data && data.confidence || 0));
-      setState(T('Done'));
+      const confidence = Math.round(data && data.confidence || 0);
+      setProgress(100);
+      setState(`${T('Done')} · ${confidence}%`);
+      return { text, confidence };
     } catch(err){
       output.textContent = T('Error') + ': ' + (err && err.message || String(err));
+      setProgress(0);
       setState(T('Error'));
+      throw err;
     } finally {
-      if(myJob === jobId){ setLoader(false); setBusy(false); }
+      if(job === jobId) setBusy(false);
     }
   }
 
-  wireDrop($('ocr-drop'), $('ocr-picker'), files => open(files[0]));
+  // Load an image and recognise it in one step — what the file screen does the
+  // moment an image arrives, and what a chosen PDF page goes through.
+  async function autoRun(file){
+    if(!(await open(file))) return null;
+    return runOCR();
+  }
+
   $('ocr-invert-view').addEventListener('click', () => { if(currentFile) preview.classList.toggle('inverted'); });
   $('ocr-invert').addEventListener('click', () => {
     if(!currentFile) return;
@@ -1334,44 +1417,19 @@ const OcrTool = (() => {
     rotation = (rotation + 90) % 360;
     $('ocr-rotate').textContent = rotation ? `${T('Rotate ⤾')} (${rotation}°)` : T('Rotate ⤾');
   });
-  runBtn.addEventListener('click', runOCR);
-  $('ocr-reset').addEventListener('click', resetUI);
-
-  $('ocr-copy').addEventListener('click', async () => {
-    const text = output.textContent || '';
-    if(!text.trim()) return;
-    const btn = $('ocr-copy'), original = btn.textContent;
-    try {
-      if(navigator.clipboard && window.isSecureContext){
-        await navigator.clipboard.writeText(text);
-      } else {
-        const ta = document.createElement('textarea');
-        ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
-        document.body.appendChild(ta); ta.select();
-        document.execCommand('copy');
-        ta.remove();
-      }
-      btn.textContent = T('Copied ✅');
-    } catch(_){ btn.textContent = T('Copy failed ❌'); }
-    setTimeout(() => btn.textContent = original, 1200);
-  });
+  runBtn.addEventListener('click', () => { runOCR().catch(() => {}); });
 
   $('ocr-download').addEventListener('click', () => {
     downloadBlob(new Blob([output.textContent || ''], { type: 'text/plain;charset=utf-8' }), 'ocr.txt');
   });
 
-  window.addEventListener('paste', e => {
-    if(!$('tool-ocr').classList.contains('active')) return;
-    const f = e.clipboardData && e.clipboardData.files && e.clipboardData.files[0];
-    if(f && isImageLike(f)) open(f);
-  });
   window.addEventListener('beforeunload', () => {
     cleanupURL();
     try { if(worker) worker.terminate(); } catch(_){}
   });
 
   resetUI();
-  return { TESS_OPTS, open };
+  return { TESS_OPTS, open, autoRun, reset: resetUI, text: () => output.textContent || '' };
 })();
 </script>
 
@@ -2025,8 +2083,10 @@ const ImgTool = (() => {
   }
   wireDrop($('img-drop'), $('img-input'), addFiles, { multiple: true });
 
-  async function convertOne(item, format, quality, maxDim){
-    const { img } = item;
+  /* The encoder proper. Kept free of any DOM the batch grid owns so the file
+     screen can convert a pasted image through exactly this path — one encoder,
+     one set of defaults, no chance of the two drifting apart. */
+  async function encodeFromImage(img, name, format, quality, maxDim){
     let w = img.naturalWidth, h = img.naturalHeight;
     if(maxDim && Math.max(w, h) > maxDim){
       const s = maxDim / Math.max(w, h);
@@ -2040,10 +2100,32 @@ const ImgTool = (() => {
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, 0, 0, w, h);
     const blob = await new Promise(r => canvas.toBlob(r, format, quality));
-    if(!blob) throw new Error('Encoding failed for ' + item.name);
+    if(!blob) throw new Error('Encoding failed for ' + name);
+    const ext = format === 'image/jpeg' ? 'jpg' : format.split('/')[1];
+    return { blob, ext, w, h, name: name.replace(/\.[^.]+$/, '') + '.' + ext };
+  }
+
+  /* Same encoder starting from a File — decodes (and un-HEICs) it first. */
+  async function encodeFile(file, format, quality, maxDim){
+    const norm = await normalizeImageFile(file);
+    const url = URL.createObjectURL(norm);
+    try {
+      const img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = () => rej(new Error('Could not load image.'));
+        i.src = url;
+      });
+      return await encodeFromImage(img, norm.name, format, quality, maxDim);
+    } finally { URL.revokeObjectURL(url); }
+  }
+
+  async function convertOne(item, format, quality, maxDim){
+    const out = await encodeFromImage(item.img, item.name, format, quality, maxDim);
+    const { blob, w, h } = out;
     item.outBlob = blob;
-    item.outExt = format === 'image/jpeg' ? 'jpg' : format.split('/')[1];
-    item.outName = item.name.replace(/\.[^.]+$/, '') + '.' + item.outExt;
+    item.outExt = out.ext;
+    item.outName = out.name;
     const om = item.card.querySelector('.out-meta');
     om.classList.remove('hidden');
     item.card.querySelector('.out-info').textContent = `${item.outExt.toUpperCase()} ${w}×${h} · ${fmtBytes(blob.size)}`;
@@ -2096,7 +2178,7 @@ const ImgTool = (() => {
     refreshCount();
   });
 
-  return { open: addFiles };
+  return { open: addFiles, encodeFile };
 })();
 
 /* ════════════════════════════════════════════════════════════════
@@ -2353,16 +2435,79 @@ const TranscodeTool = (() => {
    ════════════════════════════════════════════════════════════════ */
 const AutoTool = (() => {
   const drop = $('auto-drop'), result = $('auto-result'), outcomes = $('auto-outcomes');
+  const stage = document.querySelector('.auto-stage');
+  const preview = $('auto-preview'), thumb = $('auto-thumb');
+  const ocrBox = $('auto-ocr');
+  const convBox = $('auto-conv'), convState = $('ac-state');
+  const pdfBox = $('auto-pdf'), pdfGrid = $('pdf-grid'), viewActs = $('auto-view-acts');
+  let previewURL = null, convFiles = [], pdfFirstPage = null;
 
   function outcomeBtn(icon, title, desc, fn){
     const b = document.createElement('button');
     b.className = 'oc-card';
-    b.innerHTML = '<div class="oc-t"><span></span><span></span></div><div class="oc-d"></div>';
+    b.innerHTML = '<div class="oc-t"><span></span><span></span><span class="oc-n"></span></div><div class="oc-d"></div>';
     const [i, t] = b.querySelectorAll('.oc-t span');
     i.textContent = icon; t.textContent = title;
     b.querySelector('.oc-d').textContent = desc;
     b.addEventListener('click', fn);
     return b;
+  }
+
+  function clearPreview(){
+    if(previewURL){ URL.revokeObjectURL(previewURL); previewURL = null; }
+    thumb.removeAttribute('src');
+    thumb.classList.remove('inverted');
+    preview.classList.add('hidden');
+  }
+  function showThumb(url, alt){
+    if(previewURL){ URL.revokeObjectURL(previewURL); previewURL = null; }
+    thumb.src = url; thumb.alt = alt || '';
+    preview.classList.remove('hidden');
+  }
+
+  // HEIC has to go through the decoder before an <img> can show it, which is
+  // the same normalisation OCR needs — so it is done once and shared.
+  async function showPreview(file){
+    clearPreview();
+    let shown;
+    try { shown = await normalizeImageFile(file); }
+    catch(_){ return file; }
+    previewURL = URL.createObjectURL(shown);
+    thumb.src = previewURL;
+    thumb.alt = shown.name;
+    preview.classList.remove('hidden');
+    return shown;
+  }
+
+  // Every panel off; receive() turns back on only the ones the file type earns.
+  function resetPanels(){
+    OcrTool.reset();
+    ocrBox.classList.add('hidden');
+    convBox.classList.add('hidden');
+    convState.textContent = '';
+    convFiles = [];
+    pdfBox.classList.add('hidden');
+    pdfGrid.classList.add('hidden');
+    pdfGrid.querySelectorAll('.rcard').forEach(c => c.remove());
+    viewActs.classList.add('hidden');
+    pdfFirstPage = null;
+  }
+
+  /* OCR runs the moment an image lands, so the common case — paste a
+     screenshot, take the text — needs no clicks at all. The panel is the
+     recogniser's own UI, so rotate / invert / language / Run are right there
+     when the automatic pass got it wrong. */
+  function runOcrOn(file){
+    ocrBox.classList.remove('hidden');
+    OcrTool.autoRun(file).catch(() => {});   // errors are already shown in the panel
+  }
+
+  // A rendered PDF page, handed to the recogniser without leaving the screen.
+  function ocrPage(file, num){
+    showThumb(URL.createObjectURL(file), file.name);
+    previewURL = thumb.src;
+    runOcrOn(file);
+    ocrBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
   async function receive(files){
@@ -2376,20 +2521,20 @@ const AutoTool = (() => {
     $('auto-meta').textContent = `${info.label} · ${fmtBytes(files.reduce((s, f) => s + f.size, 0))}`;
     $('auto-ico').textContent = ({ pdf: 'PDF', image: 'IMG', heic: 'HEIC', audio: 'AUD', video: 'VID' })[info.kind] || 'BIN';
     outcomes.innerHTML = '';
+    resetPanels();
     const add = (...a) => outcomes.appendChild(outcomeBtn(...a));
 
+    const isImage = info.kind === 'image' || info.kind === 'heic';
+    // Decoded once here and handed to both the preview and OCR.
+    const shown = isImage ? await showPreview(first) : (clearPreview(), first);
+
     if(info.kind === 'pdf'){
-      add('📄', T('Convert pages to images'), T('Render every page to PNG, JPEG or WebP at any DPI — download singly or as ZIP.'),
-        () => { PdfTool.open(first); showTool('pdf'); });
-      add('🔍', T('OCR the content'), T('Render pages to images first (opens PDF → Images), then feed a page to OCR.'),
-        () => { PdfTool.open(first); showTool('pdf'); });
+      // The page renderer's own controls, on this screen. Nothing to link to.
+      pdfBox.classList.remove('hidden');
     } else if(info.kind === 'image' || info.kind === 'heic'){
-      add('🖼️', T('Convert format / resize'), info.kind === 'heic'
-          ? T('Decode HEIC locally and re-encode to PNG, JPEG or WebP, with optional downscaling and batch ZIP.')
-          : T('Re-encode to PNG, JPEG or WebP, with optional downscaling and batch ZIP.'),
-        () => { ImgTool.open(files); showTool('images'); });
-      add('🔍', T('Extract text (OCR)'), T('Recognize English, Spanish or Portuguese text — fully offline.'),
-        () => { OcrTool.open(first); showTool('ocr'); });
+      // OCR and conversion both live on this screen now, so neither gets a card
+      // that only leads somewhere else. What is left is the one outcome this
+      // screen cannot do inline.
       add('✒️', T('Signature cleanup'), T('Flatten lighting, threshold, despeckle, crop and recolor into a transparent PNG.'),
         () => { SigTool.open(files); showTool('signature'); });
     } else if(info.kind === 'audio'){
@@ -2413,27 +2558,123 @@ const AutoTool = (() => {
       add('🔬', T('Inspect metadata'), T('Open metadata.carino.systems — magic-byte analysis, metadata extraction and editing for any file.'),
         () => window.open('https://metadata.carino.systems', '_blank', 'noopener'));
     }
+    outcomes.querySelectorAll('.oc-card').forEach((c, i) => c.querySelector('.oc-n').textContent = i + 1);
     result.classList.remove('hidden');
+    stage.classList.add('loaded');
+    if(isImage){
+      runOcrOn(shown);
+      convFiles = files;
+      convState.textContent = files.length > 1
+        ? `${files.length} ${T('files')}` : '';
+      convBox.classList.remove('hidden');
+    } else if(info.kind === 'pdf'){
+      // Page 1 renders immediately so the screen shows the document, not just
+      // its name — and that page is already an image OCR can take.
+      const loaded = await PdfTool.open(first);
+      if(loaded && loaded.preview){
+        showThumb(loaded.preview.url, first.name);
+        pdfFirstPage = new File([loaded.preview.blob], `${first.name.replace(/\.[^.]+$/, '')}-page1.png`,
+                                { type: 'image/png' });
+        viewActs.classList.remove('hidden');
+      }
+    }
   }
 
   wireDrop(drop, $('auto-input'), receive, { multiple: true });
   $('auto-clear').addEventListener('click', () => {
     result.classList.add('hidden');
+    stage.classList.remove('loaded');
     outcomes.innerHTML = '';
+    clearPreview();
+    resetPanels();
     setWsFile('');
   });
 
-  /* global paste: any tab except the ones with their own paste handling */
+  /* The outcomes answer to their ordinals — 1, 2, 3 — while the chooser is up. */
+  window.addEventListener('keydown', e => {
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    if(!$('tool-auto').classList.contains('active') || result.classList.contains('hidden')) return;
+    const ae = document.activeElement;
+    if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+    const n = /^[1-9]$/.test(e.key) ? +e.key : 0;
+    if(!n) return;
+    const cards = outcomes.querySelectorAll('.oc-card');
+    if(n > cards.length) return;
+    e.preventDefault();
+    cards[n - 1].click();
+  });
+
+  // Page 1 of a PDF is already an image; hand it straight to the recogniser.
+  $('av-ocr').addEventListener('click', () => { if(pdfFirstPage) ocrPage(pdfFirstPage, 1); });
+  $('ac-more').addEventListener('click', () => { ImgTool.open(convFiles); showTool('images'); });
+
+  const acFmt = () => document.querySelector('input[name="ac-fmt"]:checked').value;
+  document.querySelectorAll('input[name="ac-fmt"]').forEach(r => r.addEventListener('change', () =>
+    $('ac-quality-group').classList.toggle('hidden', acFmt() === 'image/png')));
+  $('ac-quality').addEventListener('input', () => $('ac-quality-val').textContent = $('ac-quality').value + '%');
+
+  $('ac-go').addEventListener('click', async () => {
+    if(!convFiles.length) return;
+    const btn = $('ac-go');
+    btn.disabled = true;
+    const format = acFmt();
+    const quality = (parseInt($('ac-quality').value, 10) || 85) / 100;
+    const maxDim = parseInt($('ac-maxdim').value, 10) || 0;
+    try {
+      const out = [];
+      for(const f of convFiles){
+        convState.textContent = `${T('Converting')} ${f.name}…`;
+        out.push(await ImgTool.encodeFile(f, format, quality, maxDim));
+      }
+      // One file downloads as itself; a batch downloads as one archive rather
+      // than firing a download per image.
+      if(out.length === 1){
+        downloadBlob(out[0].blob, out[0].name);
+        convState.textContent = `${out[0].ext.toUpperCase()} ${out[0].w}×${out[0].h} · ${fmtBytes(out[0].blob.size)}`;
+      } else {
+        const seen = new Map();
+        const zip = await makeZip(out.map(o => {
+          const n = seen.get(o.name) || 0;
+          seen.set(o.name, n + 1);
+          return { name: n ? o.name.replace(/\.([^.]+)$/, `-${n}.$1`) : o.name, blob: o.blob };
+        }));
+        downloadBlob(zip, 'converted-images.zip');
+        convState.textContent = `${T('ZIP ready')} (${fmtBytes(zip.size)}).`;
+      }
+    } catch(e){
+      convState.textContent = T('Error') + ': ' + (e && e.message || e);
+    } finally { btn.disabled = false; }
+  });
+
+  $('ao-copy').addEventListener('click', async () => {
+    const text = OcrTool.text();
+    if(!text.trim()) return;
+    const btn = $('ao-copy'), original = btn.textContent;
+    try {
+      if(navigator.clipboard && window.isSecureContext){
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      btn.textContent = T('Copied ✅');
+    } catch(_){ btn.textContent = T('Copy failed ❌'); }
+    setTimeout(() => btn.textContent = original, 1200);
+  });
+
+  /* Global paste. Signature is the only workspace left with its own handler. */
   window.addEventListener('paste', e => {
     const fs = e.clipboardData && e.clipboardData.files;
     if(!fs || !fs.length) return;
     const files = Array.from(fs);
-    if($('tool-ocr').classList.contains('active') && files.every(isImageLike)) return;      // OCR takes it
-    if($('tool-signature').classList.contains('active') && files.every(isImageLike)) return; // Signature takes it
+    if($('tool-signature').classList.contains('active') && files.every(isImageLike)) return;
     receive(files);
   });
 
-  return { receive };
+  return { receive, ocrPage };
 })();
 
 /* expose internals for testing / power users */
