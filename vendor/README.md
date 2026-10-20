@@ -15,7 +15,7 @@ than a package manager's.
 | `pdfjs/pdf.min.mjs`, `pdf.worker.min.mjs` | [PDF.js](https://mozilla.github.io/pdf.js/) | Apache-2.0 | `pdfjs/LICENSE` |
 | `tesseract/tesseract.min.js`, `worker.min.js` | [Tesseract.js](https://github.com/naptha/tesseract.js) | Apache-2.0 | `tesseract/LICENSE.md` |
 | `tesseract/tesseract-core*.wasm.js` | [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) engine, compiled to WASM | Apache-2.0 | `tesseract/LICENSE-core` |
-| `tessdata/*.traineddata.gz` | [tessdata](https://github.com/tesseract-ocr/tessdata) models (eng, spa, por) | Apache-2.0 | covered by `tesseract/LICENSE-core` |
+| `tessdata/*.traineddata.gz` | [tessdata](https://github.com/tesseract-ocr/tessdata) models (eng, spa, por) | Apache-2.0 | `tessdata/LICENSE` |
 | `libheif/libheif-bundle.js` | [libheif](https://github.com/strukturag/libheif) + libde265, compiled to WASM | **LGPL-3.0** | `libheif/LICENSE` |
 
 ## The one entry that needs thought before you redistribute
