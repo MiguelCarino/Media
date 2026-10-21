@@ -2,6 +2,8 @@
 
 **[media.carino.systems](https://media.carino.systems)** — a client-side file & media manipulation suite. Every tool runs entirely in your browser: no uploads, no servers, no CDNs. All engines (pdf.js, Tesseract WASM, language models, fonts) are vendored in this repository, so the site works fully offline.
 
+![Media — Carino Systems](screenshot.webp)
+
 Consolidates and supersedes three earlier apps — **pdf2img-gui**, **SimpleOCR** and **SignatureEditor** — and adds two new tools.
 
 ## Tools
@@ -63,6 +65,8 @@ Browsers can't transcode video offline without a ~30 MB WASM blob, so this is th
 - The page is a **fixed-viewport layout**: the body never scrolls — long content scrolls inside its own panel.
 - Fonts are self-hosted (`fonts/carino-fonts.css`); the shared fleet navbar is `carino-navbar.js` + `carino-clock.js`.
 - Internals are exposed on `window.MediaTools` for testing.
+
+**Related tools:** [Metadata](https://metadata.carino.systems/) · [Vitae](https://vitae.carino.systems/) · [Quote](https://quote.carino.systems/)
 
 ## Licensing
 
